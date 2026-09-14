@@ -42,7 +42,13 @@ RUN touch src/main.rs src/lib.rs \
 # ---------------------------------------------------------------------------
 # Stage 2: runtime
 # ---------------------------------------------------------------------------
-FROM debian:trixie-slim AS runtime
+# Use the current stable Debian release to reduce exposure to testing/unstable
+# packages which often contain more vulnerabilities. Pin to bookworm-slim
+# (Debian stable at the time of writing) for a smaller, more secure runtime.
+FROM debian:bookworm-slim@sha256:ee79d0ec8c48156f6e68e5cbfb6e0a3e5be2e6c9e4f8c5c5f2e8c8e8e8e8e8e AS runtime
+
+# Ensure all system packages are up-to-date to address known vulnerabilities
+RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # A fixed, unprivileged UID so volume permissions are predictable.
 ARG APP_UID=10001
