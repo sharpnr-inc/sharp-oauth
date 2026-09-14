@@ -1,0 +1,19 @@
+# Keep the build context small, and above all keep secrets out of the image.
+
+# Secrets: local configuration and private signing keys.
+.env
+.env.*
+keys/
+*.pem
+
+# Build output and VCS metadata.
+target/
+.git/
+
+# Not needed to build the binary.
+docs/
+tests/
+scripts/
+*.md
+Dockerfile
+compose.yaml

@@ -21,13 +21,31 @@ Third-party app ──▶ /oauth/authorize ──▶ sign in ──▶ consent �
 | [docs/oauth-flow.md](docs/oauth-flow.md)         | The protocol step by step, with the code that handles each step |
 | [docs/architecture.md](docs/architecture.md)     | How the code is organised, the data model, errors, testing  |
 | [docs/security.md](docs/security.md)             | Every security decision, the attack it stops, and where it lives |
+| [docs/deployment.md](docs/deployment.md)         | Docker image, Docker Compose, and production checklist      |
 | [SHARP_OAUTH_PLAN.md](SHARP_OAUTH_PLAN.md)       | The original project plan                                   |
 | `cargo doc --open --document-private-items`      | API docs. Every module starts with an explanation of its job |
 
 Suggested reading order for the code: `src/lib.rs` → `src/oauth/mod.rs` →
 `src/oauth/authorization.rs` → `src/oauth/token.rs` → `src/token/` → `src/oidc/`.
 
-## Quick start
+## Quick start with Docker
+
+Requirements: Docker with Compose. No Rust or PostgreSQL install needed.
+
+```bash
+docker compose up --build -d
+curl http://localhost:3000/health          # → sharp-oauth is alive
+
+docker compose run --rm sharp-oauth create-client \
+    --name "Demo App" \
+    --redirect-uri http://localhost:4000/callback \
+    --scopes "openid profile email offline_access"
+```
+
+This starts PostgreSQL, creates a signing key on first run, and serves on
+`http://localhost:3000`. See [docs/deployment.md](docs/deployment.md).
+
+## Quick start without Docker
 
 Requirements: Rust (edition 2024), PostgreSQL, and for the demo script `curl`,
 `jq` and `openssl`.
@@ -66,6 +84,9 @@ You can also do the browser part by hand: open
 | `cargo run` / `cargo run -- serve`          | Start the server                                    |
 | `cargo run -- generate-signing-key`         | Create a new RSA key in `SIGNING_KEYS_DIR` (mode 0600) |
 | `cargo run -- create-client --name N --redirect-uri U [--redirect-uri U2] --scopes "S1 S2" [--public]` | Register a client. `--public` = no secret (SPA/mobile) |
+| `cargo run -- generate-signing-key --if-missing` | Create a key only if none exists (used by Compose) |
+| `cargo run -- healthcheck`                  | Exit 0 if the local server answers `/health` (container health check) |
+| `docker compose up --build -d`              | Run the whole stack in containers                   |
 | `cargo test`                                | Unit + integration tests (needs PostgreSQL, see below) |
 | `cargo fmt && cargo clippy --all-targets`   | Format and lint                                     |
 
