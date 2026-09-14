@@ -24,3 +24,7 @@ target
 # Added by cargo
 
 /target
+
+# Local configuration and private key material. Never commit these.
+.env
+/keys/

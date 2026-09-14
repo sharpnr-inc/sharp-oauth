@@ -10,13 +10,38 @@ axum = "0.8.9"
 base64 = "0.23.1"
 chrono = { version = "0.4.45", features = ["serde"] }
 dotenvy = "0.15.7"
+# JWT signing/verification (RS256) and JWK export for the JWKS endpoint.
+# `rust_crypto` selects the pure-Rust crypto backend (no C toolchain needed).
+jsonwebtoken = { version = "11.0.0", default-features = false, features = ["use_pem", "rust_crypto"] }
 rand = "0.10.2"
+# RSA private-key generation for `generate-signing-key` and tests.
+# Already pulled in by jsonwebtoken; `getrandom` exposes its OS-backed RNG.
+rsa = { version = "0.9.10", features = ["getrandom"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 sha2 = "0.11.0"
-sqlx = { version = "0.9.0", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "migrate"] }
+sqlx = { version = "0.9.0", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "migrate", "derive"] }
+# Constant-time comparison of secrets (client secrets, PKCE, CSRF tokens).
+subtle = "2.6.1"
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["full"] }
+# CORS for the client-facing API endpoints (token, revoke, userinfo, JWKS,
+# discovery) so browser-based public clients can call them with fetch().
+tower-http = { version = "0.7.1", features = ["cors"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+# Parsing/building redirect URIs safely instead of string concatenation.
+url = "2.5.8"
 uuid = { version = "1.26.1", features = ["v7", "serde"] }
+
+[dev-dependencies]
+# `ServiceExt::oneshot` lets integration tests call the router without a TCP socket.
+tower = { version = "0.5.3", features = ["util"] }
+
+# RSA key generation is extremely slow without optimisations. Optimise just
+# these crates so tests and `generate-signing-key` stay fast in debug builds.
+[profile.dev.package.num-bigint-dig]
+opt-level = 3
+
+[profile.dev.package.rsa]
+opt-level = 3
