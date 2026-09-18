@@ -24,7 +24,7 @@ Every request flows through three layers, and dependencies only point downwards:
 └───────────────┬──────────────────────────────────────────────────────┘
                 │ calls repository functions
 ┌───────────────▼──────────────────────────────────────────────────────┐
-│ db/              one file per table, all SQL lives here               │
+│ db/              entities + one query module per table (SeaORM)       │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -68,7 +68,8 @@ src/
 │   ├── userinfo.rs          /oauth/userinfo claims per scope
 │   └── discovery.rs         /.well-known/openid-configuration
 │
-├── db/                      SQL, one module per table
+├── db/                      queries, one module per table
+│   ├── entities/            SeaORM entities: one Model per table
 │   ├── users.rs  sessions.rs  clients.rs  scopes.rs
 │   └── authorization_codes.rs  consents.rs  refresh_tokens.rs
 │
@@ -84,10 +85,24 @@ src/
 
 ### Where domain types live
 
-Types live next to the logic that owns them, not in a central `models.rs`:
-`User` in `identity/user.rs`, `OAuthClient` in `oauth/client.rs`,
-`AuthorizationCode` in `oauth/authorization.rs`, `RefreshToken` in
-`token/refresh.rs`. The `db/` functions take and return these types.
+Each table is described once, as a SeaORM `Model` in `db/entities/`, and the
+domain modules re-export the one they own:
+
+```rust
+// src/identity/user.rs
+pub use crate::db::entities::users::Model as User;
+```
+
+So `User`, `OAuthClient`, `Session`, `AuthorizationCode` and `RefreshToken`
+are entity models, and there is no separate row struct to keep in sync and no
+mapping layer. The *behaviour* still lives with the domain: `impl OAuthClient`
+(with `has_redirect_uri`) is in `oauth/client.rs`, and
+`RefreshToken::check_usable` in `token/refresh.rs`. Rust allows that because
+it is all one crate.
+
+Columns holding a secret's hash use the `SecretHash` newtype
+(`db/entities/secret_hash.rs`), which prints `<redacted>`: SeaORM requires
+models to implement `Debug`, and a model has a field for every column.
 
 ## Shared state
 
@@ -95,14 +110,15 @@ Types live next to the logic that owns them, not in a central `models.rs`:
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub db: PgPool,                     // already Arc inside
+    pub db: DatabaseConnection,         // SeaORM handle over a shared pool
     pub signing_keys: Arc<SigningKeys>,
 }
 ```
 
 Axum clones `AppState` for every request, which is cheap because every member
-is reference-counted. Service functions take `&AppState` when they need more
-than the database, or `&PgPool` when they do not.
+is reference-counted (cloning a `DatabaseConnection` shares its pool). Service
+functions take `&AppState` when they need more than the database, or
+`&DatabaseConnection` when they do not.
 
 ## Data model
 
@@ -137,20 +153,36 @@ Things worth noticing:
 
 Migrations are in `migrations/` (forward-only, one file per table). They are
 compiled into the binary with `sqlx::migrate!` and applied at startup and by
-`create-client`.
+`create-client`. SQLx still owns the connection pool and the migration runner;
+SeaORM borrows that same pool, so there is one driver and one pool.
 
 ## Queries
 
-`db/` uses runtime-checked queries (`sqlx::query_as::<_, T>`) with
-`#[derive(sqlx::FromRow)]` structs rather than the compile-time `query!`
-macros. That keeps `cargo build` working without a live database. The price
-is that SQL mistakes surface at runtime, which is why the integration tests
-exercise every query against real PostgreSQL.
+`db/` uses [SeaORM](https://www.sea-ql.org/SeaORM/). Queries are built from
+type-safe columns, so a renamed column is a compile error:
 
-Functions that may run inside a transaction accept `impl PgExecutor<'_>`, so
-the caller can pass either `&PgPool` or `&mut *tx`. The token endpoint uses
-transactions so that "consume code + create refresh token" and "rotate
-refresh token" are atomic.
+```rust
+Users::find().filter(users::Column::Email.eq(email)).one(db).await
+```
+
+Four queries carry a security rule rather than just fetching rows: the
+one-time code claim, the `FOR UPDATE` lookup used for refresh rotation, the
+consent upsert and the family revocation on code replay. Each is built by its
+own small function whose generated SQL is asserted in a unit test, for
+example:
+
+```rust
+assert!(sql.contains(r#""used_at" IS NULL"#), "one-time use depends on this");
+```
+
+That keeps the SQL contract visible and reviewable even though no SQL string
+is hand-written. The integration tests then exercise every query against real
+PostgreSQL.
+
+Functions that may run inside a transaction accept `&impl ConnectionTrait`,
+so the caller can pass either the `DatabaseConnection` or a
+`DatabaseTransaction`. The token endpoint uses transactions so that "consume
+code + create refresh token" and "rotate refresh token" are atomic.
 
 ## Error handling
 

@@ -97,7 +97,7 @@ Tests (`tests/oauth_flow.rs`): `unknown_client_shows_error_page_instead_of_redir
 
 | Threat | Defence | Code |
 |---|---|---|
-| Code reuse | Atomic `UPDATE … WHERE used_at IS NULL`; replay revokes refresh tokens from that code | `db/authorization_codes.rs::claim`, `exchange_authorization_code` |
+| Code reuse | Atomic `UPDATE … WHERE used_at IS NULL` (SQL asserted in `claim_statement`'s test); replay revokes refresh tokens from that code | `db/authorization_codes.rs::claim`, `exchange_authorization_code` |
 | Brute-forcing the verifier | A failed attempt still consumes the code | `exchange_authorization_code` |
 | Code used by another client | Code bound to client UUID | `check_code_bindings` |
 | Redirect URI substitution | `redirect_uri` must equal the authorize request | `check_code_bindings` |
@@ -118,7 +118,7 @@ Tests: `reused_code_is_rejected_and_revokes_issued_refresh_tokens`,
 | Threat | Defence | Code |
 |---|---|---|
 | Stolen refresh token used silently | Rotation on every use; reuse of a rotated token revokes the whole family | `exchange_refresh_token`, `db::refresh_tokens::revoke_family` |
-| Race: two parallel refreshes both succeed | `SELECT … FOR UPDATE` | `find_by_hash_for_update` |
+| Race: two parallel refreshes both succeed | `SELECT … FOR UPDATE` (SQL asserted in `find_for_update_statement`'s test) | `find_by_hash_for_update` |
 | Token used by another client | Bound to client; another client's attempt does not revoke it | `RefreshToken::check_usable` |
 | Scope widening on refresh | Requested scope must be ⊆ original grant | `exchange_refresh_token` |
 | Endless validity | 30-day expiry per token; revocation endpoint | `REFRESH_TOKEN_TTL`, `oauth/revocation.rs` |
@@ -177,8 +177,10 @@ session tokens, `Authorization` headers, query strings.
 * Request logs contain the path only (`http/middleware.rs::log_requests`).
 * Audit events (`target: "audit"`) contain event names and IDs.
 * Structs holding secrets (`NewAccount`, `SignInForm`, `ClientCredentials`,
-  `TokenResponse`) do not implement `Debug`; `User`'s `Debug` omits the
-  password hash (`debug_output_does_not_contain_password_hash`).
+  `TokenResponse`) do not implement `Debug`. Stored hashes use the
+  `SecretHash` column type, so `{:?}` on any row prints `<redacted>`
+  (`debug_output_never_contains_the_hash`,
+  `debug_output_does_not_contain_password_hash`).
 * Internal errors are logged server-side and returned as `server_error`.
 
 ## CORS

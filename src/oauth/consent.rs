@@ -5,13 +5,14 @@
 //! asked again when a client requests *more* than it already has.
 
 use chrono::Utc;
+use sea_orm::DatabaseConnection;
 use uuid::Uuid;
 
 use crate::{db, error::AppError, oauth::scope::ScopeSet};
 
 /// The scopes `user_id` has approved for `client_id` (UUID), if any.
 pub async fn granted_scopes(
-    db: &sqlx::PgPool,
+    db: &DatabaseConnection,
     user_id: Uuid,
     client_id: Uuid,
 ) -> Result<Option<ScopeSet>, AppError> {
@@ -21,7 +22,7 @@ pub async fn granted_scopes(
 
 /// Records approval of `scopes`, adding to anything approved earlier.
 pub async fn grant(
-    db: &sqlx::PgPool,
+    db: &DatabaseConnection,
     user_id: Uuid,
     client_id: Uuid,
     scopes: &ScopeSet,

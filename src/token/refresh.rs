@@ -22,11 +22,11 @@
 //! Refresh tokens are only issued when the `offline_access` scope was granted.
 
 use chrono::{DateTime, Duration, Utc};
-use sqlx::PgExecutor;
+use sea_orm::ConnectionTrait;
 use uuid::Uuid;
 
 use crate::{
-    db,
+    db::{self, entities::SecretHash},
     secret::{generate_token, hash_token},
 };
 
@@ -34,22 +34,12 @@ use crate::{
 /// issues a new token, an app used at least monthly stays signed in.
 pub const REFRESH_TOKEN_TTL: Duration = Duration::days(30);
 
-/// A row of `oauth_refresh_tokens` (without the hash).
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct RefreshToken {
-    pub id: Uuid,
-    pub family_id: Uuid,
-    pub authorization_code_id: Option<Uuid>,
-    /// UUID of the client.
-    pub client_id: Uuid,
-    pub user_id: Uuid,
-    pub scope: String,
-    pub auth_time: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub created_at: DateTime<Utc>,
-    pub revoked_at: Option<DateTime<Utc>>,
-    pub rotated_to_id: Option<Uuid>,
-}
+/// One refresh token.
+///
+/// The SeaORM model for `oauth_refresh_tokens`
+/// ([`crate::db::entities::oauth_refresh_tokens`]). `token_hash` is a
+/// [`SecretHash`], so `{:?}` prints `<redacted>`.
+pub use crate::db::entities::oauth_refresh_tokens::Model as RefreshToken;
 
 /// Why a stored refresh token cannot be used.
 #[derive(Debug, PartialEq, Eq)]
@@ -94,13 +84,14 @@ pub struct NewRefreshToken {
 
 /// Stores a new refresh token and returns `(raw_token, record)`.
 pub async fn issue(
-    db: impl PgExecutor<'_>,
+    db: &impl ConnectionTrait,
     new: NewRefreshToken,
     now: DateTime<Utc>,
-) -> Result<(String, RefreshToken), sqlx::Error> {
+) -> Result<(String, RefreshToken), sea_orm::DbErr> {
     let raw = generate_token();
     let record = RefreshToken {
         id: Uuid::now_v7(),
+        token_hash: SecretHash::from(hash_token(&raw)),
         family_id: new.family_id,
         authorization_code_id: new.authorization_code_id,
         client_id: new.client_id,
@@ -112,7 +103,7 @@ pub async fn issue(
         revoked_at: None,
         rotated_to_id: None,
     };
-    db::refresh_tokens::insert(db, &record, &hash_token(&raw)).await?;
+    db::refresh_tokens::insert(db, &record).await?;
     Ok((raw, record))
 }
 
@@ -123,6 +114,7 @@ mod tests {
     fn token(now: DateTime<Utc>, client_id: Uuid) -> RefreshToken {
         RefreshToken {
             id: Uuid::now_v7(),
+            token_hash: SecretHash::from("hash".to_owned()),
             family_id: Uuid::now_v7(),
             authorization_code_id: None,
             client_id,

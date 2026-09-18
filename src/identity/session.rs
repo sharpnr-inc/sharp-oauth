@@ -7,11 +7,12 @@
 //! These sessions belong to *Sharp-OAuth itself*. Third-party applications
 //! never see this cookie; they get OAuth tokens instead.
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
+use sea_orm::DatabaseConnection;
 use uuid::Uuid;
 
 use crate::{
-    db,
+    db::{self, entities::SecretHash},
     error::AppError,
     identity::user::User,
     secret::{generate_token, hash_token},
@@ -23,36 +24,35 @@ pub const SESSION_COOKIE: &str = "sharp_session";
 /// How long a sign-in lasts before the user must enter their password again.
 pub const SESSION_TTL: Duration = Duration::days(7);
 
-/// A row from `user_sessions` (without the token hash).
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct Session {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub expires_at: DateTime<Utc>,
-    /// The moment the user authenticated; reported as OIDC `auth_time`.
-    pub created_at: DateTime<Utc>,
-}
+/// A browser session.
+///
+/// The SeaORM model for `user_sessions`
+/// ([`crate::db::entities::user_sessions`]). `session_token_hash` is a
+/// [`SecretHash`], so `{:?}` prints `<redacted>`.
+pub use crate::db::entities::user_sessions::Model as Session;
 
 /// Starts a session for `user`. Returns the raw token for the cookie.
 ///
 /// The raw token is returned exactly once and is not stored anywhere.
-pub async fn create(db: &sqlx::PgPool, user: &User) -> Result<(String, Session), AppError> {
+pub async fn create(db: &DatabaseConnection, user: &User) -> Result<(String, Session), AppError> {
     let token = generate_token();
     let now = Utc::now();
     let session = Session {
         id: Uuid::now_v7(),
         user_id: user.id,
+        session_token_hash: SecretHash::from(hash_token(&token)),
         expires_at: now + SESSION_TTL,
         created_at: now,
+        revoked_at: None,
     };
 
-    db::sessions::insert(db, &session, &hash_token(&token)).await?;
+    db::sessions::insert(db, &session).await?;
     Ok((token, session))
 }
 
 /// Resolves a raw cookie value to its active session and user.
 pub async fn find_active(
-    db: &sqlx::PgPool,
+    db: &DatabaseConnection,
     token: &str,
 ) -> Result<Option<(Session, User)>, AppError> {
     let Some(session) =
@@ -67,7 +67,7 @@ pub async fn find_active(
 }
 
 /// Ends a session. Revoking an unknown or already revoked token is a no-op.
-pub async fn revoke(db: &sqlx::PgPool, token: &str) -> Result<(), AppError> {
+pub async fn revoke(db: &DatabaseConnection, token: &str) -> Result<(), AppError> {
     db::sessions::revoke_by_hash(db, &hash_token(token), Utc::now()).await?;
     Ok(())
 }

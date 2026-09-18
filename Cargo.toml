@@ -19,7 +19,20 @@ rand = "0.10.2"
 rsa = { version = "0.9.10", features = ["getrandom"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+# The ORM used for every query. `postgres-array` is needed for our TEXT[]
+# columns (redirect_uris, allowed_scopes, consent scopes).
+sea-orm = { version = "2.0.3", default-features = false, features = [
+    "macros",
+    "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "with-uuid",
+    "with-chrono",
+    "postgres-array",
+] }
 sha2 = "0.11.0"
+# Still used directly for the connection pool and the migration runner;
+# SeaORM borrows that same pool. Same version SeaORM depends on, so there is
+# only one PostgreSQL driver in the build.
 sqlx = { version = "0.9.0", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "migrate", "derive"] }
 # Constant-time comparison of secrets (client secrets, PKCE, CSRF tokens).
 subtle = "2.6.1"

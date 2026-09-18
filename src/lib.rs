@@ -15,7 +15,7 @@
 //! | [`config`]   | Reading settings from environment variables                     |
 //! | [`error`]    | [`error::AppError`] and its mapping to OAuth error responses    |
 //! | [`secret`]   | Random secrets, hashing them, constant-time comparison          |
-//! | [`db`]       | Connection pool, migrations and all SQL queries                 |
+//! | [`db`]       | Connection pool, migrations, entities and all queries (SeaORM)  |
 //! | [`identity`] | Sharpnr users, passwords and browser sessions                   |
 //! | [`oauth`]    | OAuth 2.0: clients, scopes, PKCE, authorize, consent, token     |
 //! | [`token`]    | Access tokens (JWT), refresh tokens, signing keys               |
@@ -28,7 +28,7 @@
 
 use std::sync::Arc;
 
-use sqlx::PgPool;
+use sea_orm::DatabaseConnection;
 
 pub mod config;
 pub mod db;
@@ -50,12 +50,13 @@ use token::signing::SigningKeys;
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub db: PgPool,
+    /// SeaORM handle. Cloning it shares the underlying connection pool.
+    pub db: DatabaseConnection,
     pub signing_keys: Arc<SigningKeys>,
 }
 
 impl AppState {
-    pub fn new(config: Config, db: PgPool, signing_keys: SigningKeys) -> Self {
+    pub fn new(config: Config, db: DatabaseConnection, signing_keys: SigningKeys) -> Self {
         Self {
             config: Arc::new(config),
             db,

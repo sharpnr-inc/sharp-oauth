@@ -38,6 +38,7 @@
 //! ```
 
 use chrono::{DateTime, Utc};
+use sea_orm::TransactionTrait;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -135,16 +136,16 @@ async fn exchange_authorization_code(
 
     let code_hash = hash_token(code);
     let now = Utc::now();
-    let mut tx = state.db.begin().await?;
+    let tx = state.db.begin().await?;
 
     // Step 1: consume the code. From this point it can never be used again,
     // whether or not the rest of the checks pass.
-    let Some(record) = db::authorization_codes::claim(&mut *tx, &code_hash, now).await? else {
+    let Some(record) = db::authorization_codes::claim(&tx, &code_hash, now).await? else {
         // Unknown, or already used. A second use of a real code means it
         // leaked: RFC 6749 §4.1.2 says to revoke what the first use produced.
-        if let Some(used) = db::authorization_codes::find_by_hash(&mut *tx, &code_hash).await? {
+        if let Some(used) = db::authorization_codes::find_by_hash(&tx, &code_hash).await? {
             let revoked =
-                db::refresh_tokens::revoke_by_authorization_code(&mut *tx, used.id, now).await?;
+                db::refresh_tokens::revoke_by_authorization_code(&tx, used.id, now).await?;
             tx.commit().await?;
             tracing::warn!(
                 target: "audit",
@@ -188,7 +189,7 @@ async fn exchange_authorization_code(
 
     if scope.contains(scope::OFFLINE_ACCESS) {
         let (raw, _) = refresh::issue(
-            &mut *tx,
+            &tx,
             NewRefreshToken {
                 family_id: Uuid::now_v7(),
                 authorization_code_id: Some(record.id),
@@ -266,17 +267,16 @@ async fn exchange_refresh_token(
         .map_err(|_| AppError::InvalidScope("scope is malformed"))?;
 
     let now = Utc::now();
-    let mut tx = state.db.begin().await?;
+    let tx = state.db.begin().await?;
 
-    let record = db::refresh_tokens::find_by_hash_for_update(&mut *tx, &hash_token(raw))
+    let record = db::refresh_tokens::find_by_hash_for_update(&tx, &hash_token(raw))
         .await?
         .ok_or(AppError::InvalidGrant("refresh token is invalid"))?;
 
     match record.check_usable(client.id, now) {
         Ok(()) => {}
         Err(Unusable::AlreadyRotated) => {
-            let revoked =
-                db::refresh_tokens::revoke_family(&mut *tx, record.family_id, now).await?;
+            let revoked = db::refresh_tokens::revoke_family(&tx, record.family_id, now).await?;
             tx.commit().await?;
             tracing::warn!(
                 target: "audit",
@@ -326,7 +326,7 @@ async fn exchange_refresh_token(
     // Rotate. The new token keeps the *original* scope (RFC 6749 §6) so a
     // narrowed request does not permanently shrink the grant.
     let (new_raw, new_record) = refresh::issue(
-        &mut *tx,
+        &tx,
         NewRefreshToken {
             family_id: record.family_id,
             authorization_code_id: record.authorization_code_id,
@@ -338,7 +338,7 @@ async fn exchange_refresh_token(
         now,
     )
     .await?;
-    db::refresh_tokens::mark_rotated(&mut *tx, record.id, new_record.id).await?;
+    db::refresh_tokens::mark_rotated(&tx, record.id, new_record.id).await?;
     tx.commit().await?;
 
     response.refresh_token = Some(new_raw);
@@ -423,6 +423,7 @@ mod tests {
     fn code_for(client: &OAuthClient, now: DateTime<Utc>) -> AuthorizationCode {
         AuthorizationCode {
             id: Uuid::now_v7(),
+            code_hash: crate::db::entities::SecretHash::from("hash".to_owned()),
             client_id: client.id,
             user_id: Uuid::now_v7(),
             redirect_uri: "https://app.example.com/cb".into(),

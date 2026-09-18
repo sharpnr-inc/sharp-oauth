@@ -4,60 +4,46 @@
 //! reaches the database.
 
 use chrono::{DateTime, Utc};
-use sqlx::PgExecutor;
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter, sea_query::Expr,
+};
 
-use crate::identity::session::Session;
+use crate::{
+    db::entities::user_sessions::{Column, Entity as Sessions},
+    identity::session::Session,
+};
 
-pub async fn insert(
-    db: impl PgExecutor<'_>,
-    session: &Session,
-    session_token_hash: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "INSERT INTO user_sessions (id, user_id, session_token_hash, expires_at, created_at)
-         VALUES ($1, $2, $3, $4, $5)",
-    )
-    .bind(session.id)
-    .bind(session.user_id)
-    .bind(session_token_hash)
-    .bind(session.expires_at)
-    .bind(session.created_at)
-    .execute(db)
-    .await?;
+pub async fn insert(db: &impl ConnectionTrait, session: &Session) -> Result<(), DbErr> {
+    Sessions::insert(session.clone().into_active_model())
+        .exec(db)
+        .await?;
     Ok(())
 }
 
 /// Finds a session that is neither revoked nor expired.
 pub async fn find_active_by_hash(
-    db: impl PgExecutor<'_>,
+    db: &impl ConnectionTrait,
     session_token_hash: &str,
     now: DateTime<Utc>,
-) -> Result<Option<Session>, sqlx::Error> {
-    sqlx::query_as::<_, Session>(
-        "SELECT id, user_id, expires_at, created_at
-         FROM user_sessions
-         WHERE session_token_hash = $1
-           AND revoked_at IS NULL
-           AND expires_at > $2",
-    )
-    .bind(session_token_hash)
-    .bind(now)
-    .fetch_optional(db)
-    .await
+) -> Result<Option<Session>, DbErr> {
+    Sessions::find()
+        .filter(Column::SessionTokenHash.eq(session_token_hash))
+        .filter(Column::RevokedAt.is_null())
+        .filter(Column::ExpiresAt.gt(now))
+        .one(db)
+        .await
 }
 
 pub async fn revoke_by_hash(
-    db: impl PgExecutor<'_>,
+    db: &impl ConnectionTrait,
     session_token_hash: &str,
     now: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "UPDATE user_sessions SET revoked_at = $2
-         WHERE session_token_hash = $1 AND revoked_at IS NULL",
-    )
-    .bind(session_token_hash)
-    .bind(now)
-    .execute(db)
-    .await?;
+) -> Result<(), DbErr> {
+    Sessions::update_many()
+        .col_expr(Column::RevokedAt, Expr::value(now))
+        .filter(Column::SessionTokenHash.eq(session_token_hash))
+        .filter(Column::RevokedAt.is_null())
+        .exec(db)
+        .await?;
     Ok(())
 }

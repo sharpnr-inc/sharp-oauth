@@ -19,33 +19,24 @@
 //!   local development), and must not contain a fragment (RFC 6749 §3.1.2).
 
 use base64::{Engine, engine::general_purpose::STANDARD};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
+use sea_orm::DatabaseConnection;
 use uuid::Uuid;
 
 use crate::{
     config::is_loopback_host,
-    db,
+    db::{self, entities::SecretHash},
     error::AppError,
     oauth::{params::Params, scope::ScopeSet},
     secret::{constant_time_eq, generate_token, hash_token},
 };
 
-/// A registered application, as stored in `oauth_clients`.
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct OAuthClient {
-    /// Internal primary key, used for foreign keys.
-    pub id: Uuid,
-    /// The public identifier clients send, e.g. `sharp_client_…`.
-    pub client_id: String,
-    /// `SHA-256(client_secret)`, or `None` for public clients.
-    pub client_secret_hash: Option<String>,
-    pub name: String,
-    pub redirect_uris: Vec<String>,
-    pub allowed_scopes: Vec<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub disabled_at: Option<DateTime<Utc>>,
-}
+/// A registered application.
+///
+/// The SeaORM model for `oauth_clients`
+/// ([`crate::db::entities::oauth_clients`]). `client_secret_hash` is a
+/// [`SecretHash`], so `{:?}` prints `<redacted>`.
+pub use crate::db::entities::oauth_clients::Model as OAuthClient;
 
 impl OAuthClient {
     pub fn is_confidential(&self) -> bool {
@@ -99,12 +90,12 @@ pub enum RegistrationError {
     #[error("unknown scopes: {0:?}")]
     UnknownScopes(Vec<String>),
     #[error(transparent)]
-    Database(#[from] sqlx::Error),
+    Database(#[from] sea_orm::DbErr),
 }
 
 /// Registers a new client.
 pub async fn register(
-    db: &sqlx::PgPool,
+    db: &DatabaseConnection,
     new: NewClient,
 ) -> Result<RegisteredClient, RegistrationError> {
     let name = new.name.trim().to_owned();
@@ -144,7 +135,9 @@ pub async fn register(
     let client = OAuthClient {
         id: Uuid::now_v7(),
         client_id: format!("sharp_client_{}", &generate_token()[..24]),
-        client_secret_hash: client_secret.as_deref().map(hash_token),
+        client_secret_hash: client_secret
+            .as_deref()
+            .map(|secret| SecretHash::from(hash_token(secret))),
         name,
         redirect_uris: new.redirect_uris,
         allowed_scopes: requested,
@@ -241,7 +234,7 @@ pub fn extract_credentials(
 /// Every failure is the same `invalid_client` error, so the response does not
 /// reveal whether a `client_id` exists.
 pub async fn authenticate(
-    db: &sqlx::PgPool,
+    db: &DatabaseConnection,
     credentials: &ClientCredentials,
 ) -> Result<OAuthClient, AppError> {
     let client = db::clients::find_by_client_id(db, &credentials.client_id)
@@ -251,11 +244,9 @@ pub async fn authenticate(
     let authenticated = match (&client, &credentials.client_secret) {
         (None, _) => false,
         // Confidential client with a secret: compare hashes in constant time.
-        (Some(client), Some(secret)) => {
-            client.client_secret_hash.as_deref().is_some_and(|stored| {
-                constant_time_eq(hash_token(secret).as_bytes(), stored.as_bytes())
-            })
-        }
+        (Some(client), Some(secret)) => client.client_secret_hash.as_ref().is_some_and(|stored| {
+            constant_time_eq(hash_token(secret).as_bytes(), stored.as_str().as_bytes())
+        }),
         // No secret presented: only acceptable for public clients.
         (Some(client), None) => !client.is_confidential(),
     };

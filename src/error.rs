@@ -57,7 +57,7 @@ pub enum AppError {
     InvalidScope(&'static str),
 
     #[error("database error: {0}")]
-    Database(#[from] sqlx::Error),
+    Database(#[from] sea_orm::DbErr),
 
     #[error("internal error: {0}")]
     Internal(#[from] anyhow::Error),

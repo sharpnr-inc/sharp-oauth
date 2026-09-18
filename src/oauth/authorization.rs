@@ -25,12 +25,13 @@
 //! to redeem it unless the redeeming request matches.
 
 use chrono::{DateTime, Duration, Utc};
+use sea_orm::DatabaseConnection;
 use url::Url;
 use uuid::Uuid;
 
 use crate::{
     AppState,
-    db::{self, scopes::ScopeDescription},
+    db::{self, entities::SecretHash, scopes::ScopeDescription},
     error::AppError,
     identity::{session::Session, user::User},
     oauth::{client::OAuthClient, consent, params::Params, pkce, scope::ScopeSet},
@@ -44,23 +45,12 @@ pub const AUTHORIZATION_CODE_TTL: Duration = Duration::seconds(60);
 const MAX_NONCE_LEN: usize = 512;
 const MAX_STATE_LEN: usize = 2048;
 
-/// A row of `oauth_authorization_codes` (the code hash is never loaded).
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct AuthorizationCode {
-    pub id: Uuid,
-    /// UUID of the client (not the public `client_id` string).
-    pub client_id: Uuid,
-    pub user_id: Uuid,
-    pub redirect_uri: String,
-    pub scope: String,
-    pub code_challenge: String,
-    pub code_challenge_method: String,
-    pub nonce: Option<String>,
-    pub auth_time: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub created_at: DateTime<Utc>,
-    pub used_at: Option<DateTime<Utc>>,
-}
+/// A one-time authorization code.
+///
+/// The SeaORM model for `oauth_authorization_codes`
+/// ([`crate::db::entities::oauth_authorization_codes`]). `code_hash` is a
+/// [`SecretHash`], so `{:?}` prints `<redacted>`.
+pub use crate::db::entities::oauth_authorization_codes::Model as AuthorizationCode;
 
 // ---------------------------------------------------------------------------
 // Request parsing
@@ -236,8 +226,8 @@ pub enum AuthorizationError {
     Internal(#[from] AppError),
 }
 
-impl From<sqlx::Error> for AuthorizationError {
-    fn from(err: sqlx::Error) -> Self {
+impl From<sea_orm::DbErr> for AuthorizationError {
+    fn from(err: sea_orm::DbErr) -> Self {
         AuthorizationError::Internal(err.into())
     }
 }
@@ -268,7 +258,7 @@ impl ErrorRedirect {
 
 /// Checks an authorization request against the client registry and protocol rules.
 pub async fn validate(
-    db: &sqlx::PgPool,
+    db: &DatabaseConnection,
     request: &AuthorizationRequest,
 ) -> Result<ValidatedRequest, AuthorizationError> {
     use AuthorizationError::Unsafe;
@@ -529,6 +519,7 @@ async fn issue_code(
     let now = Utc::now();
     let record = AuthorizationCode {
         id: Uuid::now_v7(),
+        code_hash: SecretHash::from(hash_token(&code)),
         client_id: request.client.id,
         user_id: user.id,
         redirect_uri: request.redirect_uri.clone(),
@@ -541,7 +532,7 @@ async fn issue_code(
         created_at: now,
         used_at: None,
     };
-    db::authorization_codes::insert(&state.db, &record, &hash_token(&code)).await?;
+    db::authorization_codes::insert(&state.db, &record).await?;
 
     tracing::info!(
         target: "audit",
@@ -628,6 +619,8 @@ mod tests {
         let session = Session {
             id: Uuid::now_v7(),
             user_id: Uuid::now_v7(),
+            session_token_hash: crate::db::entities::SecretHash::from("hash".to_owned()),
+            revoked_at: None,
             expires_at: now + Duration::days(1),
             created_at: now - Duration::seconds(120),
         };

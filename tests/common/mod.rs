@@ -15,6 +15,7 @@ use axum::{
     http::{HeaderMap, Method, Request, StatusCode, header},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
+use sea_orm::SqlxPostgresConnector;
 use sharp_oauth::{
     AppState, app,
     config::Config,
@@ -42,6 +43,9 @@ fn test_key_pem() -> &'static str {
 
 pub struct TestApp {
     pub state: AppState,
+    /// The raw SQLx pool behind the SeaORM connection, so tests can assert
+    /// directly on table contents with plain SQL.
+    pool: PgPool,
     router: Router,
 }
 
@@ -60,14 +64,22 @@ impl TestApp {
             signing_keys_dir: "keys".into(),
             signing_active_kid: None,
         };
-        let state = AppState::new(config, pool, keys);
+        let db = SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone());
+        let state = AppState::new(config, db, keys);
         Self {
             router: app(state.clone()),
+            pool,
             state,
         }
     }
 
+    /// The SQLx pool, for `sqlx::query...` assertions inside tests.
     pub fn db(&self) -> &PgPool {
+        &self.pool
+    }
+
+    /// The SeaORM connection, for calling application services directly.
+    pub fn orm(&self) -> &sea_orm::DatabaseConnection {
         &self.state.db
     }
 
@@ -126,7 +138,7 @@ impl TestApp {
 
     pub async fn create_user(&self, email: &str) -> User {
         user::sign_up(
-            self.db(),
+            self.orm(),
             NewAccount {
                 email: email.into(),
                 password: PASSWORD.into(),
@@ -139,7 +151,7 @@ impl TestApp {
 
     pub async fn register_client(&self, scopes: &str, confidential: bool) -> RegisteredClient {
         client::register(
-            self.db(),
+            self.orm(),
             NewClient {
                 name: "Example App".into(),
                 redirect_uris: vec![REDIRECT_URI.into()],

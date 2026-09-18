@@ -1,40 +1,22 @@
 //! Sharpnr user accounts: sign-up and password authentication.
 
-use std::fmt;
-
-use chrono::{DateTime, Utc};
+use chrono::Utc;
+use sea_orm::{DatabaseConnection, SqlErr};
 use uuid::Uuid;
 
-use crate::{db, error::AppError, identity::password};
+use crate::{
+    db::{self, entities::SecretHash},
+    error::AppError,
+    identity::password,
+};
 
-/// A Sharpnr account, as stored in the `users` table.
-#[derive(Clone, sqlx::FromRow)]
-pub struct User {
-    /// Stable identifier. Exposed to clients as the OIDC `sub` claim.
-    pub id: Uuid,
-    /// Lower-cased email address.
-    pub email: String,
-    /// Argon2id PHC string. Never sent anywhere.
-    pub password_hash: String,
-    pub display_name: Option<String>,
-    /// Sharp-OAuth has no email verification flow yet, so this is always
-    /// `false`, and that is what we truthfully report to clients.
-    pub email_verified: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-/// Hand-written so that `{:?}` can never print the password hash.
-impl fmt::Debug for User {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("User")
-            .field("id", &self.id)
-            .field("email", &self.email)
-            .field("display_name", &self.display_name)
-            .field("email_verified", &self.email_verified)
-            .finish_non_exhaustive()
-    }
-}
+/// A Sharpnr account.
+///
+/// This is the SeaORM model for the `users` table
+/// ([`crate::db::entities::users`]), used directly as the domain type so a
+/// column is described in exactly one place. `password_hash` is a
+/// [`SecretHash`], so `{:?}` prints `<redacted>`.
+pub use crate::db::entities::users::Model as User;
 
 /// Input for [`sign_up`]. Deliberately has no `Debug` (contains a password).
 pub struct NewAccount {
@@ -64,7 +46,7 @@ pub const MAX_PASSWORD_BYTES: usize = 1024;
 pub const MAX_DISPLAY_NAME_CHARS: usize = 100;
 
 /// Creates a new account.
-pub async fn sign_up(db: &sqlx::PgPool, account: NewAccount) -> Result<User, SignUpError> {
+pub async fn sign_up(db: &DatabaseConnection, account: NewAccount) -> Result<User, SignUpError> {
     let email = normalize_email(&account.email).ok_or(SignUpError::InvalidEmail)?;
 
     if account.password.chars().count() < MIN_PASSWORD_CHARS
@@ -92,7 +74,7 @@ pub async fn sign_up(db: &sqlx::PgPool, account: NewAccount) -> Result<User, Sig
     let user = User {
         id: Uuid::now_v7(),
         email,
-        password_hash,
+        password_hash: SecretHash::from(password_hash),
         display_name,
         email_verified: false,
         created_at: now,
@@ -106,10 +88,10 @@ pub async fn sign_up(db: &sqlx::PgPool, account: NewAccount) -> Result<User, Sig
         }
         // The UNIQUE constraint is the source of truth. Checking "does this
         // email exist?" first would race with a concurrent sign-up.
-        Err(sqlx::Error::Database(err)) if err.is_unique_violation() => {
-            Err(SignUpError::EmailTaken)
-        }
-        Err(err) => Err(AppError::from(err).into()),
+        Err(err) => match err.sql_err() {
+            Some(SqlErr::UniqueConstraintViolation(_)) => Err(SignUpError::EmailTaken),
+            _ => Err(AppError::from(err).into()),
+        },
     }
 }
 
@@ -118,7 +100,7 @@ pub async fn sign_up(db: &sqlx::PgPool, account: NewAccount) -> Result<User, Sig
 /// The caller must show the same message in both cases ("invalid email or
 /// password") so the response does not reveal whether an account exists.
 pub async fn authenticate(
-    db: &sqlx::PgPool,
+    db: &DatabaseConnection,
     email: &str,
     password: String,
 ) -> Result<Option<User>, AppError> {
@@ -129,7 +111,7 @@ pub async fn authenticate(
 
     // Always run Argon2, even for unknown emails, so timing is the same.
     let hash = match &user {
-        Some(user) => user.password_hash.clone(),
+        Some(user) => user.password_hash.as_str().to_owned(),
         None => password::DUMMY_PASSWORD_HASH.clone(),
     };
     let password_ok = password::verify_password(password, hash).await?;

@@ -125,7 +125,9 @@ cargo test
 
 * **Unit tests** (in `src/`) cover pure logic: PKCE (with the RFC 7636 test
   vector), scope parsing, exact redirect URI matching, JWT signing/rotation,
-  claim building, CSRF, cookie and HTML escaping helpers.
+  claim building, CSRF, cookie and HTML escaping helpers. They also assert the
+  SQL generated for the four security-critical queries (one-time code claim,
+  `FOR UPDATE` rotation lookup, consent upsert, family revocation).
 * **Integration tests** (in `tests/`) run the real router against PostgreSQL.
   `#[sqlx::test]` creates a throw-away database per test from `DATABASE_URL`,
   so that user needs permission to create databases. They cover the complete
