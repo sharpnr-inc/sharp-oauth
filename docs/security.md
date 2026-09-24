@@ -53,7 +53,8 @@ Tests: `wrong_password_and_unknown_email_look_identical`, `duplicate_email_is_re
 | Session fixation / stale sessions | Old session revoked on sign-in; logout revokes server-side | `pages.rs::start_session`, `logout` |
 | Open redirect via `return_to` | Local paths only; rejects `//host` and `/\host` | `pages.rs::safe_return_to` |
 | Clickjacking the consent button | `X-Frame-Options: DENY`, CSP `frame-ancestors 'none'` | `http/middleware.rs` |
-| HTML/script injection via client name, email, `state` | All dynamic HTML escaped | `http/html.rs::escape` |
+| HTML/script injection via client name, email, `state` | Askama escapes every `{{ value }}`; no manual escaping to forget | `templates/`, `http/html.rs` |
+| Script execution on the consent screen | Pages ship no JavaScript, so CSP stays `default-src 'none'` | `http/middleware.rs` |
 | Tokens cached by proxies/browsers | `Cache-Control: no-store` default | `http/middleware.rs` |
 | Codes leaking via `Referer` | `Referrer-Policy: no-referrer` | `http/middleware.rs` |
 
@@ -61,7 +62,9 @@ Tests: `wrong_password_and_unknown_email_look_identical`, `duplicate_email_is_re
 to `/oauth/authorize` with a top-level GET, and the session cookie must be
 sent then.
 
-Tests: `sign_in_without_csrf_token_is_rejected`,
+Tests: `hostile_client_name_cannot_inject_markup`,
+`hidden_field_values_cannot_break_out_of_the_attribute`,
+`sign_in_without_csrf_token_is_rejected`,
 `consent_without_csrf_token_is_rejected`, `sign_in_does_not_redirect_off_site`,
 `security_headers_are_present`, `sign_in_logout_and_session_invalidation`.
 

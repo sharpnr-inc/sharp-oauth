@@ -79,7 +79,7 @@ async fn authorize(
                 &scopes,
                 &request.to_pairs(),
             );
-            with_csrf_cookie(page.into_response(), csrf)
+            with_csrf_cookie(page, csrf)
         }
         Ok(NextStep::RedirectToClient(url)) => redirect(&url),
         Err(err) => authorization_error(state, err),

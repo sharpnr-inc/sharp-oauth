@@ -1,73 +1,163 @@
 //! Server-rendered HTML pages.
 //!
-//! Deliberately plain: `format!` strings, no template engine, no JavaScript.
-//! Visual polish comes after the protocol is correct.
+//! The markup lives in `templates/` as ordinary `.html` files, rendered with
+//! [Askama](https://crates.io/crates/askama). Each struct below is the data
+//! one template may use; Askama compiles the templates during `cargo build`,
+//! so a typo in a field name is a build error rather than a broken page.
 //!
-//! **Every dynamic value goes through [`escape`].** Values like the client
-//! name, email or `state` come from users or third parties; unescaped they
-//! would let someone inject HTML (and script) into our sign-in pages.
+//! **Escaping is automatic.** `{{ value }}` in an `.html` template is
+//! HTML-escaped, so a client name like `<script>…` can never become markup on
+//! our sign-in pages. Nothing here needs a manual escape call, and nobody can
+//! forget one.
+//!
+//! These pages are deliberately plain: no JavaScript and no external
+//! resources, which is what lets the Content-Security-Policy stay at
+//! `default-src 'none'` (see [`crate::http::middleware`]). They are the most
+//! security-sensitive screens in the product, so the less that runs on them,
+//! the better.
 
+use askama::Template;
 use axum::{
     http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
 
-use crate::{db::scopes::ScopeDescription, http::csrf::CSRF_FIELD, identity::user::User};
+use crate::{db::scopes::ScopeDescription, identity::user::User};
 
-/// Escapes text for use in HTML content and double-quoted attributes.
-pub fn escape(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for c in text.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&#39;"),
-            _ => out.push(c),
+#[derive(Template)]
+#[template(path = "home.html")]
+struct HomeTemplate<'a> {
+    user: Option<&'a User>,
+    csrf: &'a str,
+}
+
+#[derive(Template)]
+#[template(path = "signin.html")]
+struct SignInTemplate<'a> {
+    csrf: &'a str,
+    return_to: Option<&'a str>,
+    /// `?return_to=…`, already percent-encoded, for the link to `/signup`.
+    return_to_query: String,
+    email: &'a str,
+    error: Option<&'a str>,
+}
+
+#[derive(Template)]
+#[template(path = "signup.html")]
+struct SignUpTemplate<'a> {
+    csrf: &'a str,
+    return_to: Option<&'a str>,
+    return_to_query: String,
+    email: &'a str,
+    display_name: &'a str,
+    error: Option<&'a str>,
+}
+
+#[derive(Template)]
+#[template(path = "consent.html")]
+struct ConsentTemplate<'a> {
+    csrf: &'a str,
+    client_name: &'a str,
+    user: &'a User,
+    scopes: &'a [ScopeDescription],
+    request_fields: &'a [(&'a str, &'a str)],
+}
+
+#[derive(Template)]
+#[template(path = "error.html")]
+struct ErrorTemplate<'a> {
+    title: &'a str,
+    message: &'a str,
+}
+
+pub fn home_page(user: Option<&User>, csrf: &str) -> Response {
+    render(StatusCode::OK, HomeTemplate { user, csrf })
+}
+
+pub fn sign_in_page(
+    status: StatusCode,
+    csrf: &str,
+    return_to: Option<&str>,
+    email: &str,
+    error: Option<&str>,
+) -> Response {
+    render(
+        status,
+        SignInTemplate {
+            csrf,
+            return_to,
+            return_to_query: return_to_query(return_to),
+            email,
+            error,
+        },
+    )
+}
+
+pub fn sign_up_page(
+    status: StatusCode,
+    csrf: &str,
+    return_to: Option<&str>,
+    email: &str,
+    display_name: &str,
+    error: Option<&str>,
+) -> Response {
+    render(
+        status,
+        SignUpTemplate {
+            csrf,
+            return_to,
+            return_to_query: return_to_query(return_to),
+            email,
+            display_name,
+            error,
+        },
+    )
+}
+
+/// The consent screen.
+///
+/// `request_fields` are the original authorization parameters, re-submitted
+/// as hidden fields so the consent POST can validate the request again.
+pub fn consent_page(
+    csrf: &str,
+    client_name: &str,
+    user: &User,
+    scopes: &[ScopeDescription],
+    request_fields: &[(&str, &str)],
+) -> Response {
+    render(
+        StatusCode::OK,
+        ConsentTemplate {
+            csrf,
+            client_name,
+            user,
+            scopes,
+            request_fields,
+        },
+    )
+}
+
+pub fn error_page(status: StatusCode, title: &str, message: &str) -> Response {
+    render(status, ErrorTemplate { title, message })
+}
+
+/// Renders a template, falling back to a fixed page if rendering fails.
+///
+/// Templates are checked at compile time, so a failure here means something
+/// like an allocation error rather than a broken template. We still never
+/// panic in a request handler.
+fn render(status: StatusCode, template: impl Template) -> Response {
+    match template.render() {
+        Ok(body) => (status, Html(body)).into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "failed to render a template");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html("<h1>Something went wrong</h1><p>Please try again in a moment.</p>"),
+            )
+                .into_response()
         }
     }
-    out
-}
-
-const STYLE: &str = "
-  body { font-family: system-ui, sans-serif; background: #f4f5f7; color: #1d2433; margin: 0; }
-  main { max-width: 420px; margin: 8vh auto; background: #fff; padding: 2rem; border-radius: 12px;
-         box-shadow: 0 2px 12px rgba(0,0,0,.08); }
-  h1 { font-size: 1.4rem; margin-top: 0; }
-  label { display: block; margin: 1rem 0 .3rem; font-weight: 600; }
-  input[type=email], input[type=password], input[type=text] {
-         width: 100%; box-sizing: border-box; padding: .6rem; border: 1px solid #c8ccd4; border-radius: 6px; }
-  button { margin-top: 1.2rem; padding: .6rem 1.2rem; border: 0; border-radius: 6px; font-size: 1rem;
-           background: #2456d3; color: #fff; cursor: pointer; }
-  button.secondary { background: #e4e7ec; color: #1d2433; }
-  .error { background: #fde8e8; color: #9b1c1c; padding: .6rem; border-radius: 6px; }
-  .muted { color: #5b6475; font-size: .9rem; }
-  ul.scopes { padding-left: 1.2rem; }
-";
-
-fn layout(title: &str, body: &str) -> String {
-    format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
-         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>{title} · Sharpnr</title><style>{STYLE}</style></head>\
-         <body><main>{body}</main></body></html>",
-        title = escape(title),
-    )
-}
-
-fn hidden(name: &str, value: &str) -> String {
-    format!(
-        "<input type=\"hidden\" name=\"{}\" value=\"{}\">",
-        escape(name),
-        escape(value)
-    )
-}
-
-fn error_banner(error: Option<&str>) -> String {
-    error
-        .map(|message| format!("<p class=\"error\">{}</p>", escape(message)))
-        .unwrap_or_default()
 }
 
 fn return_to_query(return_to: Option<&str>) -> String {
@@ -83,141 +173,91 @@ fn return_to_query(return_to: Option<&str>) -> String {
         .unwrap_or_default()
 }
 
-pub fn home_page(user: Option<&User>, csrf: &str) -> Html<String> {
-    let body = match user {
-        Some(user) => format!(
-            "<h1>Sharpnr account</h1>\
-             <p>You are signed in as <strong>{email}</strong>.</p>\
-             <form method=\"post\" action=\"/logout\">{csrf}<button class=\"secondary\">Sign out</button></form>",
-            email = escape(&user.email),
-            csrf = hidden(CSRF_FIELD, csrf),
-        ),
-        None => "<h1>Sharpnr account</h1>\
-                 <p>You are not signed in.</p>\
-                 <p><a href=\"/signin\">Sign in</a> or <a href=\"/signup\">create an account</a>.</p>"
-            .to_owned(),
-    };
-    Html(layout("Account", &body))
-}
-
-pub fn sign_in_page(
-    csrf: &str,
-    return_to: Option<&str>,
-    email: &str,
-    error: Option<&str>,
-) -> Html<String> {
-    let body = format!(
-        "<h1>Sign in to Sharpnr</h1>{error}\
-         <form method=\"post\" action=\"/signin\">\
-           {csrf}{return_to}\
-           <label for=\"email\">Email</label>\
-           <input id=\"email\" type=\"email\" name=\"email\" value=\"{email}\" autocomplete=\"username\" required>\
-           <label for=\"password\">Password</label>\
-           <input id=\"password\" type=\"password\" name=\"password\" autocomplete=\"current-password\" required>\
-           <button>Sign in</button>\
-         </form>\
-         <p class=\"muted\">No account? <a href=\"/signup{query}\">Create one</a>.</p>",
-        error = error_banner(error),
-        csrf = hidden(CSRF_FIELD, csrf),
-        return_to = return_to
-            .map(|r| hidden("return_to", r))
-            .unwrap_or_default(),
-        email = escape(email),
-        query = escape(&return_to_query(return_to)),
-    );
-    Html(layout("Sign in", &body))
-}
-
-pub fn sign_up_page(
-    csrf: &str,
-    return_to: Option<&str>,
-    email: &str,
-    display_name: &str,
-    error: Option<&str>,
-) -> Html<String> {
-    let body = format!(
-        "<h1>Create your Sharpnr account</h1>{error}\
-         <form method=\"post\" action=\"/signup\">\
-           {csrf}{return_to}\
-           <label for=\"email\">Email</label>\
-           <input id=\"email\" type=\"email\" name=\"email\" value=\"{email}\" autocomplete=\"username\" required>\
-           <label for=\"display_name\">Display name (optional)</label>\
-           <input id=\"display_name\" type=\"text\" name=\"display_name\" value=\"{display_name}\" autocomplete=\"name\">\
-           <label for=\"password\">Password</label>\
-           <input id=\"password\" type=\"password\" name=\"password\" autocomplete=\"new-password\" minlength=\"8\" required>\
-           <button>Create account</button>\
-         </form>\
-         <p class=\"muted\">Already have an account? <a href=\"/signin{query}\">Sign in</a>.</p>",
-        error = error_banner(error),
-        csrf = hidden(CSRF_FIELD, csrf),
-        return_to = return_to
-            .map(|r| hidden("return_to", r))
-            .unwrap_or_default(),
-        email = escape(email),
-        display_name = escape(display_name),
-        query = escape(&return_to_query(return_to)),
-    );
-    Html(layout("Create account", &body))
-}
-
-/// The consent screen.
-///
-/// `request_fields` are the original authorization parameters, re-submitted
-/// as hidden fields so the consent POST can validate the request again.
-pub fn consent_page(
-    csrf: &str,
-    client_name: &str,
-    user: &User,
-    scopes: &[ScopeDescription],
-    request_fields: &[(&str, &str)],
-) -> Html<String> {
-    let scope_items: String = scopes
-        .iter()
-        .map(|scope| format!("<li>{}</li>", escape(&scope.description)))
-        .collect();
-    let fields: String = request_fields
-        .iter()
-        .map(|(name, value)| hidden(name, value))
-        .collect();
-
-    let body = format!(
-        "<h1>{client} wants to access your Sharpnr account</h1>\
-         <p class=\"muted\">Signed in as {email}</p>\
-         <p>This will allow <strong>{client}</strong> to:</p>\
-         <ul class=\"scopes\">{scope_items}</ul>\
-         <form method=\"post\" action=\"/oauth/consent\">\
-           {csrf}{fields}\
-           <button name=\"decision\" value=\"approve\">Allow</button> \
-           <button name=\"decision\" value=\"deny\" class=\"secondary\">Deny</button>\
-         </form>\
-         <p class=\"muted\">You will be sent back to {client}. Only continue if you trust this application.</p>",
-        client = escape(client_name),
-        email = escape(&user.email),
-        csrf = hidden(CSRF_FIELD, csrf),
-    );
-    Html(layout("Authorize application", &body))
-}
-
-pub fn error_page(status: StatusCode, title: &str, message: &str) -> Response {
-    let body = format!("<h1>{}</h1><p>{}</p>", escape(title), escape(message));
-    (status, Html(layout(title, &body))).into_response()
-}
-
 #[cfg(test)]
 mod tests {
+    use chrono::Utc;
+    use uuid::Uuid;
+
     use super::*;
 
+    fn user() -> User {
+        User {
+            id: Uuid::now_v7(),
+            email: "kashif@sharpnr.com".into(),
+            password_hash: "$argon2id$secret".into(),
+            display_name: None,
+            email_verified: false,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn body_of(template: impl Template) -> String {
+        template.render().unwrap()
+    }
+
     #[test]
-    fn escapes_html_special_characters() {
-        assert_eq!(
-            escape(r#"<script>alert("x")</script> & 'y'"#),
-            "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;y&#39;"
+    fn hostile_client_name_cannot_inject_markup() {
+        // A client name is chosen by whoever registered the application.
+        let body = body_of(ConsentTemplate {
+            csrf: "token",
+            client_name: r#"<script>alert("xss")</script>"#,
+            user: &user(),
+            scopes: &[],
+            request_fields: &[],
+        });
+
+        assert!(!body.contains("<script>"), "{body}");
+        // Askama writes numeric character references (`&#60;`); named
+        // entities (`&lt;`) are equally valid, so accept either.
+        assert!(
+            body.contains("&#60;script&#62;") || body.contains("&lt;script&gt;"),
+            "{body}"
         );
     }
 
     #[test]
     fn hidden_field_values_cannot_break_out_of_the_attribute() {
-        let field = hidden("state", "\"><script>");
-        assert!(!field.contains("<script>"));
+        // `state` is copied straight from the client's request.
+        let body = body_of(ConsentTemplate {
+            csrf: "token",
+            client_name: "App",
+            user: &user(),
+            scopes: &[],
+            request_fields: &[("state", "\"><script>")],
+        });
+
+        assert!(!body.contains(r#"value=""><script>"#), "{body}");
+        assert!(!body.contains("<script>"), "{body}");
+        assert!(
+            body.contains(r#"value="&#34;&#62;&#60;script&#62;""#)
+                || body.contains(r#"value="&quot;&gt;&lt;script&gt;""#),
+            "{body}"
+        );
+    }
+
+    #[test]
+    fn sign_in_page_carries_csrf_token_and_return_path() {
+        let body = body_of(SignInTemplate {
+            csrf: "csrf-value",
+            return_to: Some("/oauth/authorize?client_id=abc"),
+            return_to_query: return_to_query(Some("/oauth/authorize?client_id=abc")),
+            email: "",
+            error: Some("Invalid email or password."),
+        });
+
+        assert!(
+            body.contains(r#"<input type="hidden" name="csrf_token" value="csrf-value">"#),
+            "{body}"
+        );
+        assert!(
+            body.contains(r#"name="return_to" value="/oauth/authorize?client_id=abc"#),
+            "{body}"
+        );
+        assert!(body.contains("Invalid email or password."), "{body}");
+        assert!(
+            body.contains("/signup?return_to=%2Foauth%2Fauthorize"),
+            "{body}"
+        );
     }
 }

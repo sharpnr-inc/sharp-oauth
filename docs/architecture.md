@@ -80,7 +80,13 @@ src/
     ├── pages.rs             home, sign-in, sign-up, logout
     ├── oauth.rs             authorize, consent, token, revoke handlers
     ├── oidc.rs              discovery, jwks, userinfo handlers
-    ├── cookies.rs  csrf.rs  html.rs
+    ├── cookies.rs  csrf.rs  html.rs   (html.rs = the data each template needs)
+
+templates/                   HTML, rendered with Askama
+├── layout.html              shared shell: <head>, CSS, page frame
+├── home.html  signin.html  signup.html
+├── consent.html             the "App wants access" screen
+└── error.html
 ```
 
 ### Where domain types live
@@ -183,6 +189,24 @@ Functions that may run inside a transaction accept `&impl ConnectionTrait`,
 so the caller can pass either the `DatabaseConnection` or a
 `DatabaseTransaction`. The token endpoint uses transactions so that "consume
 code + create refresh token" and "rotate refresh token" are atomic.
+
+## HTML rendering
+
+Pages are server-rendered with [Askama](https://crates.io/crates/askama):
+markup lives in `templates/*.html`, and each struct in
+[src/http/html.rs](../src/http/html.rs) declares the data one template may
+use. Templates are compiled during `cargo build`, so a field that does not
+exist is a build error, and `{{ value }}` is HTML-escaped automatically — an
+injection cannot come from a forgotten escape call.
+
+The auth pages stay server-rendered on purpose. They load **no JavaScript**,
+which is what lets the Content-Security-Policy remain `default-src 'none'` on
+the screens where an XSS bug would mean account takeover. A future developer
+portal is a different case: it is dashboard-shaped and not part of the
+credential flow, so it can be a separate frontend over a JSON API.
+
+Because Askama compiles templates into the binary, `templates/` is copied
+into the Docker build context (see the `Dockerfile`).
 
 ## Error handling
 

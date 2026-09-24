@@ -1,0 +1,35 @@
+{#
+  Base layout for every Sharpnr page.
+
+  Child templates fill in the `title` and `content` blocks. Values written
+  with {{ ... }} are HTML-escaped automatically, which is why no page needs a
+  manual escape call.
+#}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Sharpnr{% endblock %} · Sharpnr</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f4f5f7; color: #1d2433; margin: 0; }
+  main { max-width: 420px; margin: 8vh auto; background: #fff; padding: 2rem; border-radius: 12px;
+         box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  h1 { font-size: 1.4rem; margin-top: 0; }
+  label { display: block; margin: 1rem 0 .3rem; font-weight: 600; }
+  input[type=email], input[type=password], input[type=text] {
+         width: 100%; box-sizing: border-box; padding: .6rem; border: 1px solid #c8ccd4; border-radius: 6px; }
+  button { margin-top: 1.2rem; padding: .6rem 1.2rem; border: 0; border-radius: 6px; font-size: 1rem;
+           background: #2456d3; color: #fff; cursor: pointer; }
+  button.secondary { background: #e4e7ec; color: #1d2433; }
+  .error { background: #fde8e8; color: #9b1c1c; padding: .6rem; border-radius: 6px; }
+  .muted { color: #5b6475; font-size: .9rem; }
+  ul.scopes { padding-left: 1.2rem; }
+</style>
+</head>
+<body>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block title %}Sign in{% endblock %}
+
+{% block content %}
+<h1>Sign in to Sharpnr</h1>
+{% if let Some(message) = error %}<p class="error">{{ message }}</p>{% endif %}
+<form method="post" action="/signin">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  {% if let Some(return_to) = return_to %}<input type="hidden" name="return_to" value="{{ return_to }}">{% endif %}
+  <label for="email">Email</label>
+  <input id="email" type="email" name="email" value="{{ email }}" autocomplete="username" required>
+  <label for="password">Password</label>
+  <input id="password" type="password" name="password" autocomplete="current-password" required>
+  <button>Sign in</button>
+</form>
+<p class="muted">No account? <a href="/signup{{ return_to_query }}">Create one</a>.</p>
+{% endblock %}

@@ -364,12 +364,23 @@ pub fn query_param(location: &str, name: &str) -> Option<String> {
         .map(|(_, v)| v.into_owned())
 }
 
+/// Decodes the HTML entities our templates can emit.
+///
+/// Askama escapes with numeric character references (`&#38;`), while named
+/// entities (`&amp;`) are equally valid HTML, so handle both. Browsers decode
+/// either; this helper just has to keep up.
 fn html_unescape(text: &str) -> String {
     text.replace("&quot;", "\"")
+        .replace("&#34;", "\"")
         .replace("&#39;", "'")
+        .replace("&#x27;", "'")
         .replace("&lt;", "<")
+        .replace("&#60;", "<")
         .replace("&gt;", ">")
+        .replace("&#62;", ">")
+        // `&` last: decoding it earlier would turn "&amp;#38;" into "&".
         .replace("&amp;", "&")
+        .replace("&#38;", "&")
 }
 
 /// Runs the browser part of the flow for a signed-in browser: authorize,

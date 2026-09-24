@@ -4,7 +4,7 @@ use axum::{
     Form,
     extract::{Query, State},
     http::{HeaderMap, StatusCode, header},
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use serde::Deserialize;
 
@@ -67,7 +67,7 @@ pub async fn home(
 ) -> Response {
     let csrf = csrf::issue(&headers, state.config.secure_cookies());
     let user = session.as_ref().map(|(_, user)| user);
-    with_csrf_cookie(html::home_page(user, &csrf.value).into_response(), csrf)
+    with_csrf_cookie(html::home_page(user, &csrf.value), csrf)
 }
 
 /// `GET /signin?return_to=/oauth/authorize?...`
@@ -82,8 +82,8 @@ pub async fn sign_in_page(
 ) -> Response {
     let csrf = csrf::issue(&headers, state.config.secure_cookies());
     let return_to = query.return_to.as_deref().map(safe_return_to);
-    let page = html::sign_in_page(&csrf.value, return_to, "", None);
-    with_csrf_cookie(page.into_response(), csrf)
+    let page = html::sign_in_page(StatusCode::OK, &csrf.value, return_to, "", None);
+    with_csrf_cookie(page, csrf)
 }
 
 /// `POST /signin`
@@ -103,12 +103,13 @@ pub async fn sign_in(
             let csrf = csrf::issue(&headers, state.config.secure_cookies());
             // Same message for "no such account" and "wrong password".
             let page = html::sign_in_page(
+                StatusCode::UNAUTHORIZED,
                 &csrf.value,
                 Some(return_to),
                 &form.email,
                 Some("Invalid email or password."),
             );
-            return with_csrf_cookie((StatusCode::UNAUTHORIZED, page).into_response(), csrf);
+            return with_csrf_cookie(page, csrf);
         }
         Err(err) => return internal_error(err),
     };
@@ -124,8 +125,8 @@ pub async fn sign_up_page(
 ) -> Response {
     let csrf = csrf::issue(&headers, state.config.secure_cookies());
     let return_to = query.return_to.as_deref().map(safe_return_to);
-    let page = html::sign_up_page(&csrf.value, return_to, "", "", None);
-    with_csrf_cookie(page.into_response(), csrf)
+    let page = html::sign_up_page(StatusCode::OK, &csrf.value, return_to, "", "", None);
+    with_csrf_cookie(page, csrf)
 }
 
 /// `POST /signup`
@@ -152,16 +153,14 @@ pub async fn sign_up(
             let csrf = csrf::issue(&headers, state.config.secure_cookies());
             let message = err.to_string();
             let page = html::sign_up_page(
+                StatusCode::UNPROCESSABLE_ENTITY,
                 &csrf.value,
                 Some(return_to),
                 &form.email,
                 &display_name,
                 Some(&message),
             );
-            return with_csrf_cookie(
-                (StatusCode::UNPROCESSABLE_ENTITY, page).into_response(),
-                csrf,
-            );
+            return with_csrf_cookie(page, csrf);
         }
     };
 

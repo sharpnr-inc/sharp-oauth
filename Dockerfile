@@ -34,6 +34,9 @@ RUN mkdir src \
 COPY src ./src
 # Migrations are embedded into the binary by `sqlx::migrate!` at compile time.
 COPY migrations ./migrations
+# HTML templates are compiled into the binary by Askama, so they are needed to
+# build (and never shipped in the runtime image).
+COPY templates ./templates
 # `touch` makes sure Cargo sees the real files as newer than the placeholders.
 RUN touch src/main.rs src/lib.rs \
     && cargo build --release --locked --bin sharp-oauth \
