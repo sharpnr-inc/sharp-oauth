@@ -15,6 +15,17 @@ async fn health_endpoint_responds(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn favicon_is_served_as_cacheable_svg(pool: PgPool) {
+    let app = TestApp::new(pool);
+    let response = app.get("/favicon.svg").await;
+    assert_eq!(response.status, StatusCode::OK);
+    assert_eq!(response.headers["content-type"], "image/svg+xml");
+    // Must override the `no-store` default from the security middleware.
+    assert_eq!(response.headers["cache-control"], "public, max-age=86400");
+    assert!(response.body.starts_with("<svg"));
+}
+
+#[sqlx::test]
 async fn security_headers_are_present(pool: PgPool) {
     let app = TestApp::new(pool);
     let response = app.get("/signin").await;

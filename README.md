@@ -1,6 +1,8 @@
-# sharp-oauth
+<p align="center">
+  <img src="assets/brand/png/gh-readme.png" alt="Sharp-OAuth: OAuth engine, OIDC provider, open source" width="100%">
+</p>
 
-Sharpnr's identity provider: an **OAuth 2.0 Authorization Server** and
+**Sharp-OAuth** is an open-source **OAuth 2.0 Authorization Server** and
 **OpenID Connect Provider** written in Rust. It is the engine behind
 **"Sign in with Sharpnr"**.
 
@@ -160,3 +162,23 @@ Known gaps, deliberately left for later: email verification (so
 `email_verified` is always `false`), account/session management pages,
 consent revocation UI, token introspection, per-API access-token audiences
 (RFC 8707), and a grace period for concurrent refresh requests.
+
+## Brand
+
+The logo, icons and social images are in [assets/brand/](assets/brand/),
+with usage rules in [assets/brand/README.md](assets/brand/README.md).
+
+| Name   | Hex       | Use                                      |
+|--------|-----------|------------------------------------------|
+| Ink    | `#201e1d` | Text, primary buttons, the two dark shards |
+| Red    | `#ec3013` | The third shard and accents only          |
+| Ground | `#f3f2f2` | Backgrounds                               |
+
+The wordmark is set in Archivo ExtraBold (800). Keep clear space of at least
+one blade width around the mark, and never recolor the red blade except to
+ink on red backgrounds.
+
+The sign-in pages use the mark inline and serve `assets/web/favicon.svg`,
+which adapts to dark mode. To set the GitHub link preview, upload
+`assets/brand/png/gh-social.png` under the repository's
+**Settings → Social preview**.

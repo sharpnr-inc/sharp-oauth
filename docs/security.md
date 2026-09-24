@@ -54,7 +54,7 @@ Tests: `wrong_password_and_unknown_email_look_identical`, `duplicate_email_is_re
 | Open redirect via `return_to` | Local paths only; rejects `//host` and `/\host` | `pages.rs::safe_return_to` |
 | Clickjacking the consent button | `X-Frame-Options: DENY`, CSP `frame-ancestors 'none'` | `middlewares/security_headers.rs` |
 | HTML/script injection via client name, email, `state` | Askama escapes every `{{ value }}`; no manual escaping to forget | `templates/`, `shared/views.rs` |
-| Script execution on the consent screen | Pages ship no JavaScript, so CSP stays `default-src 'none'` | `middlewares/security_headers.rs` |
+| Script execution on the consent screen | Pages ship no JavaScript, so CSP stays `default-src 'none'`; the only extra is `img-src 'self'` for our favicon | `middlewares/security_headers.rs` |
 | Tokens cached by proxies/browsers | `Cache-Control: no-store` default | `middlewares/security_headers.rs` |
 | Codes leaking via `Referer` | `Referrer-Policy: no-referrer` | `middlewares/security_headers.rs` |
 

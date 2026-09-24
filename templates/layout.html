@@ -4,32 +4,80 @@
   Child templates fill in the `title` and `content` blocks. Values written
   with {{ ... }} are HTML-escaped automatically, which is why no page needs a
   manual escape call.
+
+  Branding follows assets/brand/README.md: ink #201e1d, red #ec3013,
+  ground #f3f2f2. Red is reserved for the mark and for accents; it is never
+  used for small text (it fails WCAG contrast on white) or for the "Allow"
+  button (red reads as danger on a consent screen).
+
+  Everything is inline: the CSP is `default-src 'none'`, so the page cannot
+  load scripts, fonts or stylesheets from anywhere. The mark is inline SVG;
+  its ink shards use `currentColor` so they follow light/dark mode.
 #}
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f2f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#201e1d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>{% block title %}Sharpnr{% endblock %} · Sharpnr</title>
 <style>
-  body { font-family: system-ui, sans-serif; background: #f4f5f7; color: #1d2433; margin: 0; }
-  main { max-width: 420px; margin: 8vh auto; background: #fff; padding: 2rem; border-radius: 12px;
-         box-shadow: 0 2px 12px rgba(0,0,0,.08); }
-  h1 { font-size: 1.4rem; margin-top: 0; }
-  label { display: block; margin: 1rem 0 .3rem; font-weight: 600; }
+  :root {
+    --ink: #201e1d; --red: #ec3013; --ground: #f3f2f2;
+    --bg: var(--ground); --card: #ffffff; --text: var(--ink); --muted: #5f5b59;
+    --line: #d9d6d4; --field: #ffffff; --field-line: #b9b5b2;
+    --primary: var(--ink); --on-primary: #ffffff;
+    --error-bg: #fdecea; --error-text: #9e1f0b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: var(--ink); --card: #2a2827; --text: var(--ground); --muted: #b3aeab;
+      --line: #3d3a38; --field: #201e1d; --field-line: #57524f;
+      --primary: var(--ground); --on-primary: var(--ink);
+      --error-bg: #3a1d17; --error-text: #ffb4a6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+         padding: 8vh 16px 32px; background: var(--bg); color: var(--text);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .brand { color: var(--text); margin-bottom: 20px; }
+  .brand svg { display: block; width: 40px; height: 40px; }
+  main { width: 100%; max-width: 420px; background: var(--card); padding: 32px;
+         border: 1px solid var(--line); border-top: 3px solid var(--red); border-radius: 2px; }
+  h1 { font-family: Archivo, system-ui, sans-serif; font-weight: 800; font-size: 1.5rem;
+       line-height: 1.2; letter-spacing: -.01em; margin: 0 0 1rem; }
+  a { color: inherit; text-decoration-color: var(--red); text-underline-offset: 3px; }
+  label { display: block; margin: 1rem 0 .35rem; font-weight: 600; font-size: .95rem; }
   input[type=email], input[type=password], input[type=text] {
-         width: 100%; box-sizing: border-box; padding: .6rem; border: 1px solid #c8ccd4; border-radius: 6px; }
-  button { margin-top: 1.2rem; padding: .6rem 1.2rem; border: 0; border-radius: 6px; font-size: 1rem;
-           background: #2456d3; color: #fff; cursor: pointer; }
-  button.secondary { background: #e4e7ec; color: #1d2433; }
-  .error { background: #fde8e8; color: #9b1c1c; padding: .6rem; border-radius: 6px; }
-  .muted { color: #5b6475; font-size: .9rem; }
+    width: 100%; padding: .65rem .75rem; font: inherit; color: var(--text); background: var(--field);
+    border: 1px solid var(--field-line); border-radius: 2px; }
+  input:focus-visible, button:focus-visible, a:focus-visible {
+    outline: 2px solid var(--red); outline-offset: 2px; }
+  button { margin-top: 1.4rem; padding: .7rem 1.3rem; font: inherit; font-weight: 700;
+           border: 1px solid var(--primary); border-radius: 2px;
+           background: var(--primary); color: var(--on-primary); cursor: pointer; }
+  button:hover { opacity: .88; }
+  button.secondary { background: transparent; color: var(--text); border-color: var(--field-line); }
+  .actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .error { background: var(--error-bg); color: var(--error-text); padding: .65rem .8rem;
+           border-left: 3px solid var(--red); }
+  .muted { color: var(--muted); font-size: .9rem; }
   ul.scopes { padding-left: 1.2rem; }
+  ul.scopes li::marker { color: var(--red); }
+  footer { margin-top: 24px; color: var(--muted); font-size: .8rem; }
 </style>
 </head>
 <body>
+<div class="brand" aria-hidden="true">
+  <svg viewBox="0 0 64 64"><polygon points="8,56 18,8 32,8" fill="currentColor"/><polygon points="8,56 38,10 50,20" fill="currentColor"/><polygon points="8,56 56,28 56,46" fill="#ec3013"/></svg>
+</div>
 <main>
 {% block content %}{% endblock %}
 </main>
+<footer>Secured by Sharp-OAuth</footer>
 </body>
 </html>

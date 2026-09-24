@@ -19,8 +19,10 @@
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
   {% for field in request_fields %}<input type="hidden" name="{{ field.0 }}" value="{{ field.1 }}">
   {% endfor %}
-  <button name="decision" value="approve">Allow</button>
-  <button name="decision" value="deny" class="secondary">Deny</button>
+  <div class="actions">
+    <button name="decision" value="approve">Allow</button>
+    <button name="decision" value="deny" class="secondary">Deny</button>
+  </div>
 </form>
 <p class="muted">You will be sent back to {{ client_name }}. Only continue if you trust this application.</p>
 {% endblock %}

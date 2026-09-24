@@ -37,6 +37,9 @@ COPY migrations ./migrations
 # HTML templates are compiled into the binary by Askama, so they are needed to
 # build (and never shipped in the runtime image).
 COPY templates ./templates
+# The favicon is compiled in with `include_str!`. Only this folder is copied;
+# the brand kit in assets/brand is for people, not the build.
+COPY assets/web ./assets/web
 # `touch` makes sure Cargo sees the real files as newer than the placeholders.
 RUN touch src/main.rs src/lib.rs \
     && cargo build --release --locked --bin sharp-oauth \
