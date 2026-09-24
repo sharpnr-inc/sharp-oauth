@@ -10,8 +10,8 @@ make a test pass.
 
 | Secret           | Stored as               | Code                                  |
 |------------------|-------------------------|---------------------------------------|
-| Password         | Argon2id PHC string     | `identity/password.rs`                |
-| Session token    | SHA-256                 | `identity/session.rs`                 |
+| Password         | Argon2id PHC string     | `authentication/services/password.rs`                |
+| Session token    | SHA-256                 | `authentication/services/session.rs`                 |
 | Authorization code | SHA-256               | `oauth/authorization.rs::issue_code`  |
 | Refresh token    | SHA-256                 | `token/refresh.rs::issue`             |
 | Client secret    | SHA-256                 | `oauth/client.rs::register`           |
@@ -31,10 +31,10 @@ UUIDs identify rows; they are never used as secrets (UUID v7 is mostly a timesta
 
 | Threat | Defence | Code |
 |---|---|---|
-| Account enumeration by message | Same "Invalid email or password." for both cases | `http/pages.rs::sign_in` |
-| Account enumeration by timing | Argon2 runs against a dummy hash for unknown emails | `identity/password.rs::DUMMY_PASSWORD_HASH` |
-| DoS with huge passwords | 1024-byte limit | `identity/user.rs::MAX_PASSWORD_BYTES` |
-| Argon2 blocking the async runtime | `spawn_blocking` | `identity/password.rs` |
+| Account enumeration by message | Same "Invalid email or password." for both cases | `authentication/controllers/pages.rs::sign_in` |
+| Account enumeration by timing | Argon2 runs against a dummy hash for unknown emails | `authentication/services/password.rs::DUMMY_PASSWORD_HASH` |
+| DoS with huge passwords | 1024-byte limit | `authentication/services/user.rs::MAX_PASSWORD_BYTES` |
+| Argon2 blocking the async runtime | `spawn_blocking` | `authentication/services/password.rs` |
 | Duplicate accounts via races | DB `UNIQUE(email)` + lower-casing | `migrations/0001`, `normalize_email` |
 
 Tests: `wrong_password_and_unknown_email_look_identical`, `duplicate_email_is_rejected`.
@@ -45,18 +45,18 @@ Tests: `wrong_password_and_unknown_email_look_identical`, `duplicate_email_is_re
 
 | Threat | Defence | Code |
 |---|---|---|
-| Session theft via XSS | Cookie is `HttpOnly` | `http/cookies.rs` |
+| Session theft via XSS | Cookie is `HttpOnly` | `pkg/cookie_manager.rs` |
 | Session sent over plain HTTP | `Secure` when issuer is https | `Config::secure_cookies` |
-| Cross-site requests riding the session | `SameSite=Lax` | `http/cookies.rs` |
-| Forced consent approval (CSRF) | Double-submit CSRF token on every POST form | `http/csrf.rs` |
-| Login CSRF (victim signed into attacker's account) | Same CSRF token on `/signin` and `/signup` | `http/pages.rs` |
+| Cross-site requests riding the session | `SameSite=Lax` | `pkg/cookie_manager.rs` |
+| Forced consent approval (CSRF) | Double-submit CSRF token on every POST form | `middlewares/csrf.rs` |
+| Login CSRF (victim signed into attacker's account) | Same CSRF token on `/signin` and `/signup` | `authentication/controllers/pages.rs` |
 | Session fixation / stale sessions | Old session revoked on sign-in; logout revokes server-side | `pages.rs::start_session`, `logout` |
 | Open redirect via `return_to` | Local paths only; rejects `//host` and `/\host` | `pages.rs::safe_return_to` |
-| Clickjacking the consent button | `X-Frame-Options: DENY`, CSP `frame-ancestors 'none'` | `http/middleware.rs` |
-| HTML/script injection via client name, email, `state` | Askama escapes every `{{ value }}`; no manual escaping to forget | `templates/`, `http/html.rs` |
-| Script execution on the consent screen | Pages ship no JavaScript, so CSP stays `default-src 'none'` | `http/middleware.rs` |
-| Tokens cached by proxies/browsers | `Cache-Control: no-store` default | `http/middleware.rs` |
-| Codes leaking via `Referer` | `Referrer-Policy: no-referrer` | `http/middleware.rs` |
+| Clickjacking the consent button | `X-Frame-Options: DENY`, CSP `frame-ancestors 'none'` | `middlewares/security_headers.rs` |
+| HTML/script injection via client name, email, `state` | Askama escapes every `{{ value }}`; no manual escaping to forget | `templates/`, `shared/views.rs` |
+| Script execution on the consent screen | Pages ship no JavaScript, so CSP stays `default-src 'none'` | `middlewares/security_headers.rs` |
+| Tokens cached by proxies/browsers | `Cache-Control: no-store` default | `middlewares/security_headers.rs` |
+| Codes leaking via `Referer` | `Referrer-Policy: no-referrer` | `middlewares/security_headers.rs` |
 
 `SameSite=Lax` (not `Strict`) is deliberate: a third-party site links users
 to `/oauth/authorize` with a top-level GET, and the session cookie must be
@@ -83,7 +83,7 @@ Tests: `hostile_client_name_cannot_inject_markup`,
 | Security parameters silently ignored | `request` / `request_uri` explicitly rejected | `authorization::validate` |
 | Scope escalation | Requested ⊆ client's allowed scopes; scopes must exist in registry | `validate`, `client::register` |
 | Trusting echoed hidden fields | Consent POST re-validates the full request | `complete_consent` |
-| Password forwarded to client by redirect | Always `303 See Other`, never 307/308 | `http::redirect` |
+| Password forwarded to client by redirect | Always `303 See Other`, never 307/308 | `shared::response::redirect` |
 
 Registration rules for redirect URIs (`validate_redirect_uri_for_registration`):
 absolute, `https` (or `http` on localhost/loopback only), no fragment, no
@@ -100,7 +100,7 @@ Tests (`tests/oauth_flow.rs`): `unknown_client_shows_error_page_instead_of_redir
 
 | Threat | Defence | Code |
 |---|---|---|
-| Code reuse | Atomic `UPDATE … WHERE used_at IS NULL` (SQL asserted in `claim_statement`'s test); replay revokes refresh tokens from that code | `db/authorization_codes.rs::claim`, `exchange_authorization_code` |
+| Code reuse | Atomic `UPDATE … WHERE used_at IS NULL` (SQL asserted in `claim_statement`'s test); replay revokes refresh tokens from that code | `oauth/repo/authorization_codes.rs::claim`, `exchange_authorization_code` |
 | Brute-forcing the verifier | A failed attempt still consumes the code | `exchange_authorization_code` |
 | Code used by another client | Code bound to client UUID | `check_code_bindings` |
 | Redirect URI substitution | `redirect_uri` must equal the authorize request | `check_code_bindings` |
@@ -120,7 +120,7 @@ Tests: `reused_code_is_rejected_and_revokes_issued_refresh_tokens`,
 
 | Threat | Defence | Code |
 |---|---|---|
-| Stolen refresh token used silently | Rotation on every use; reuse of a rotated token revokes the whole family | `exchange_refresh_token`, `db::refresh_tokens::revoke_family` |
+| Stolen refresh token used silently | Rotation on every use; reuse of a rotated token revokes the whole family | `exchange_refresh_token`, `token::repo::refresh_tokens::revoke_family` |
 | Race: two parallel refreshes both succeed | `SELECT … FOR UPDATE` (SQL asserted in `find_for_update_statement`'s test) | `find_by_hash_for_update` |
 | Token used by another client | Bound to client; another client's attempt does not revoke it | `RefreshToken::check_usable` |
 | Scope widening on refresh | Requested scope must be ⊆ original grant | `exchange_refresh_token` |
@@ -165,7 +165,7 @@ same-`kid`-different-key, JWKS has no private fields); integration tests
 | Threat | Defence | Code |
 |---|---|---|
 | Account takeover via email change / reuse | `sub` is the immutable user UUID, never the email | `IdTokenClaims::new`, `claims_for` |
-| Clients trusting unverified email | `email_verified` is reported truthfully (`false` until verification exists) | `identity/user.rs` |
+| Clients trusting unverified email | `email_verified` is reported truthfully (`false` until verification exists) | `authentication/services/user.rs` |
 | Over-sharing | Claims filtered by granted scopes | `userinfo::claims_for` |
 | Advertising unimplemented features | Discovery lists only what works; `request_uri_parameter_supported: false` explicitly | `oidc/discovery.rs` |
 
@@ -177,7 +177,7 @@ Tests: `userinfo_returns_claims_for_granted_scopes_only`, `userinfo_requires_ope
 Never logged: passwords, codes, access/refresh/ID tokens, client secrets,
 session tokens, `Authorization` headers, query strings.
 
-* Request logs contain the path only (`http/middleware.rs::log_requests`).
+* Request logs contain the path only (`middlewares/security_headers.rs::log_requests`).
 * Audit events (`target: "audit"`) contain event names and IDs.
 * Structs holding secrets (`NewAccount`, `SignInForm`, `ClientCredentials`,
   `TokenResponse`) do not implement `Debug`. Stored hashes use the

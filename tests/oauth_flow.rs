@@ -10,7 +10,7 @@ use common::{
     query_param,
 };
 use jsonwebtoken::{DecodingKey, Validation, jwk::JwkSet};
-use sharp_oauth::oidc::id_token::IdTokenClaims;
+use sharp_oauth::oidc::services::id_token::IdTokenClaims;
 use sqlx::PgPool;
 
 const ALL_SCOPES: &str = "openid profile email offline_access";
@@ -452,7 +452,11 @@ async fn consent_without_csrf_token_is_rejected(pool: PgPool) {
 async fn obtain_code(
     app: &TestApp,
     scopes: &str,
-) -> (sharp_oauth::oauth::client::RegisteredClient, String, String) {
+) -> (
+    sharp_oauth::oauth::services::client::RegisteredClient,
+    String,
+    String,
+) {
     let client = app.register_client(scopes, true).await;
     app.create_user("user@example.com").await;
     let mut browser = Browser::new(app);
@@ -689,7 +693,7 @@ async fn unsupported_grant_type_and_bad_content_type(pool: PgPool) {
 
 async fn refresh(
     app: &TestApp,
-    client: &sharp_oauth::oauth::client::RegisteredClient,
+    client: &sharp_oauth::oauth::services::client::RegisteredClient,
     token: &str,
     extra: &[(&str, &str)],
 ) -> common::TestResponse {

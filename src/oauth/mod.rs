@@ -20,20 +20,22 @@
 //!  4. ◀─────────────────────────  access_token (+ id_token, refresh_token)
 //! ```
 //!
-//! * [`client`]: registered applications and client authentication
-//! * [`scope`]: parsing and comparing space-delimited scope strings
-//! * [`pkce`]: Proof Key for Code Exchange (RFC 7636)
-//! * [`authorization`]: the `/oauth/authorize` decision logic
-//! * [`consent`]: remembering what a user approved
-//! * [`token`]: the `/oauth/token` endpoint (both grant types)
-//! * [`revocation`]: the `/oauth/revoke` endpoint (RFC 7009)
-//! * [`params`]: shared parsing of form/query parameters
+//! Services, in [`services`]:
+//!
+//! * [`services::client`]: registered applications and client authentication
+//! * [`services::scope`]: parsing and comparing space-delimited scope strings
+//! * [`services::pkce`]: Proof Key for Code Exchange (RFC 7636)
+//! * [`services::authorization`]: the `/oauth/authorize` decision logic
+//! * [`services::consent`]: remembering what a user approved
+//! * [`services::token`]: the `/oauth/token` endpoint (both grant types)
+//! * [`services::revocation`]: the `/oauth/revoke` endpoint (RFC 7009)
+//! * [`services::params`]: shared parsing of form/query parameters
+//!
+//! The rest of the feature: [`routes`], [`controllers`] (HTTP handlers),
+//! [`repo`] (queries) and [`models`] (SeaORM entities).
 
-pub mod authorization;
-pub mod client;
-pub mod consent;
-pub mod params;
-pub mod pkce;
-pub mod revocation;
-pub mod scope;
-pub mod token;
+pub mod controllers;
+pub mod models;
+pub mod repo;
+pub mod routes;
+pub mod services;

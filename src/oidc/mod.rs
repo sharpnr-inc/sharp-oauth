@@ -5,12 +5,14 @@
 //! contains `openid`. The token response then includes an **ID token**, a
 //! signed statement addressed to the client saying which user signed in.
 //!
-//! * [`id_token`]: building ID token claims
-//! * [`userinfo`]: `/oauth/userinfo`, returning profile claims for an access token
-//! * [`discovery`]: `/.well-known/openid-configuration`, the machine-readable
-//!   description that lets OIDC libraries configure themselves from the
-//!   issuer URL alone
+//! * [`services::id_token`]: building ID token claims
+//! * [`services::userinfo`]: `/oauth/userinfo`, returning profile claims for an access token
+//! * [`services::discovery`]: `/.well-known/openid-configuration`, the
+//!   machine-readable description that lets OIDC libraries configure
+//!   themselves from the issuer URL alone
+//!
+//! HTTP handlers are in [`controllers`] and the URL map in [`routes`].
 
-pub mod discovery;
-pub mod id_token;
-pub mod userinfo;
+pub mod controllers;
+pub mod routes;
+pub mod services;

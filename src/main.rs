@@ -26,12 +26,12 @@ use anyhow::{Context, Result, bail};
 use sharp_oauth::{
     AppState, app,
     config::Config,
-    db,
-    oauth::{
+    oauth::services::{
         client::{self, NewClient},
         scope::ScopeSet,
     },
-    token::signing::{self, SigningKeys},
+    pkg::jwt_manager::{self, SigningKeys},
+    shared::database,
 };
 use tracing_subscriber::EnvFilter;
 
@@ -70,8 +70,8 @@ async fn serve() -> Result<()> {
         "signing keys loaded"
     );
 
-    let pool = db::connect(&config.database_url).await?;
-    db::migrate(&pool).await?;
+    let pool = database::connect(&config.database_url).await?;
+    database::migrate(&pool).await?;
     tracing::info!("database migrations applied");
 
     let address = format!("{}:{}", config.host, config.port);
@@ -137,9 +137,9 @@ fn generate_signing_key(args: &[String]) -> Result<()> {
         return Ok(());
     }
 
-    let kid = signing::new_kid();
+    let kid = jwt_manager::new_kid();
     let path = dir.join(format!("{kid}.pem"));
-    let pem = signing::generate_rsa_private_key_pem()?;
+    let pem = jwt_manager::generate_rsa_private_key_pem()?;
     write_private_file(&path, pem.as_bytes())?;
 
     println!("Created signing key {kid}");
@@ -223,8 +223,8 @@ async fn create_client(args: &[String]) -> Result<()> {
         .context("--scopes must be a space-separated list")?;
 
     let config = Config::from_env()?;
-    let pool = db::connect(&config.database_url).await?;
-    db::migrate(&pool).await?;
+    let pool = database::connect(&config.database_url).await?;
+    database::migrate(&pool).await?;
 
     let registered = client::register(
         &pool,

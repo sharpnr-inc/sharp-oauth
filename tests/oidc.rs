@@ -6,9 +6,9 @@ use axum::http::StatusCode;
 use chrono::Utc;
 use common::{ISSUER, TestApp};
 use sharp_oauth::{
-    oauth::scope::ScopeSet,
-    oidc::id_token::{self, IdTokenClaims},
-    token::access::{self, AccessTokenClaims},
+    oauth::services::scope::ScopeSet,
+    oidc::services::id_token::{self, IdTokenClaims},
+    token::services::access::{self, AccessTokenClaims},
 };
 use sqlx::PgPool;
 

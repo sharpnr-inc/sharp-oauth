@@ -18,15 +18,15 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use sea_orm::SqlxPostgresConnector;
 use sharp_oauth::{
     AppState, app,
+    authentication::services::user::{self, NewAccount, User},
     config::Config,
-    identity::user::{self, NewAccount, User},
-    oauth::{
+    oauth::services::{
         client::{self, NewClient, RegisteredClient},
         pkce,
         scope::ScopeSet,
     },
-    secret::generate_token,
-    token::signing::{SigningKeys, generate_rsa_private_key_pem},
+    pkg::jwt_manager::{SigningKeys, generate_rsa_private_key_pem},
+    shared::secret::generate_token,
 };
 use sqlx::PgPool;
 use tower::ServiceExt;

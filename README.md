@@ -25,8 +25,12 @@ Third-party app ──▶ /oauth/authorize ──▶ sign in ──▶ consent �
 | [SHARP_OAUTH_PLAN.md](SHARP_OAUTH_PLAN.md)       | The original project plan                                   |
 | `cargo doc --open --document-private-items`      | API docs. Every module starts with an explanation of its job |
 
-Suggested reading order for the code: `src/lib.rs` → `src/oauth/mod.rs` →
-`src/oauth/authorization.rs` → `src/oauth/token.rs` → `src/token/` → `src/oidc/`.
+The code is organised by feature (`authentication/`, `oauth/`, `token/`,
+`oidc/`), each with `routes.rs`, `controllers/`, `services/`, `repo/` and
+`models/`; see [docs/architecture.md](docs/architecture.md). Suggested
+reading order: `src/lib.rs` → `src/api/router.rs` → `src/oauth/mod.rs` →
+`src/oauth/services/authorization.rs` → `src/oauth/services/token.rs` →
+`src/token/services/` → `src/oidc/`.
 
 ## Quick start with Docker
 

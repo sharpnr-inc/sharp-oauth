@@ -4,34 +4,46 @@ This document explains how the code is organised and why. For the protocol
 itself see [oauth-flow.md](oauth-flow.md); for security reasoning see
 [security.md](security.md).
 
-## One package, three layers
+## One package, organised by feature
 
 Sharp-OAuth is a single Cargo package. It has a library (`src/lib.rs`) and a
 thin binary (`src/main.rs`). The library/binary split exists only so the
 integration tests in `tests/` can build the exact same application.
 
-Every request flows through three layers, and dependencies only point downwards:
+The code is organised **by feature**, the same way as `sharpnr-engine`
+(Go/Gin): each feature folder owns its routes, controllers, services, repo
+and models, and cross-cutting code sits at the top level.
+
+Inside a feature, every request flows through the same layers, and
+dependencies only point downwards:
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
-│ http/            Axum handlers, cookies, CSRF, HTML, middleware       │
+│ routes.rs       URL → handler table for the feature                  │
+├──────────────────────────────────────────────────────────────────────┤
+│ controllers/    Axum handlers: parse input, call a service, respond  │
 │                  "What did the browser/client send? What do we reply?"│
 └───────────────┬──────────────────────────────────────────────────────┘
                 │ calls one service function
 ┌───────────────▼──────────────────────────────────────────────────────┐
-│ identity/  oauth/  token/  oidc/      protocol and domain logic       │
+│ services/       protocol and domain logic                            │
 │                  "Is this allowed? What should happen?"               │
 └───────────────┬──────────────────────────────────────────────────────┘
-                │ calls repository functions
+                │ calls repo functions
 ┌───────────────▼──────────────────────────────────────────────────────┐
-│ db/              entities + one query module per table (SeaORM)       │
+│ repo/           one query module per table (SeaORM)                  │
+│ models/         SeaORM entities: one Model per table                 │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-A handler never contains protocol rules, and a service never builds an HTTP
-response. For example, the token endpoint handler is ~10 lines
-([src/http/oauth.rs](../src/http/oauth.rs)). It hands the form body to
-`oauth::token::handle`, which does all the checking.
+A controller never contains protocol rules, and a service never builds an
+HTTP response. For example, the token endpoint handler is ~10 lines
+([src/oauth/controllers/token.rs](../src/oauth/controllers/token.rs)). It
+hands the form body to `oauth::services::token::handle`, which does all the
+checking.
+
+Features may use each other's services and repos (the OAuth feature needs to
+know who is signed in, so it calls `authentication::services::session`).
 
 ## Module map
 
@@ -39,48 +51,71 @@ response. For example, the token endpoint handler is ~10 lines
 src/
 ├── main.rs                  CLI: serve | generate-signing-key | create-client
 ├── lib.rs                   module list, AppState, app()
-├── config.rs                environment variables → Config
-├── error.rs                 AppError → OAuth JSON error responses
-├── secret.rs                random tokens, SHA-256, constant-time compare
 │
-├── identity/                Sharpnr accounts (knows nothing about OAuth)
-│   ├── user.rs              User, sign_up, authenticate
-│   ├── password.rs          Argon2id hashing on the blocking thread pool
-│   └── session.rs           browser sessions (cookie token ↔ hashed row)
+├── config/                  environment variables → Config
+├── api/
+│   ├── router.rs            mounts every feature's routes, CORS, middleware
+│   └── health.rs            GET /health
+├── middlewares/
+│   ├── security_headers.rs  security headers, request logging
+│   ├── csrf.rs              double-submit CSRF tokens for forms
+│   └── auth.rs              CurrentSession extractor (who is signed in?)
+├── shared/
+│   ├── error.rs             AppError → OAuth JSON error responses
+│   ├── secret.rs            random tokens, SHA-256, constant-time compare
+│   ├── response.rs          redirect, internal_error for HTML handlers
+│   ├── views.rs             the data each Askama template needs
+│   └── database/            connect, migrate, SecretHash column type
+├── pkg/
+│   ├── cookie_manager.rs    hardened cookie read/write
+│   └── jwt_manager.rs       RSA keys from disk, sign/verify JWTs, JWKS, rotation
+│
+├── authentication/          Sharpnr accounts (knows nothing about OAuth)
+│   ├── routes.rs            /, /signin, /signup, /logout
+│   ├── controllers/pages.rs home, sign-in, sign-up, logout handlers
+│   ├── dtos.rs              form bodies
+│   ├── services/
+│   │   ├── user.rs          User, sign_up, authenticate
+│   │   ├── password.rs      Argon2id hashing on the blocking thread pool
+│   │   └── session.rs       browser sessions (cookie token ↔ hashed row)
+│   ├── repo/                users.rs  sessions.rs
+│   └── models/              users.rs  user_sessions.rs
 │
 ├── oauth/                   OAuth 2.0
-│   ├── params.rs            query/form pairs with duplicate detection
-│   ├── scope.rs             ScopeSet: parse, subset, union
-│   ├── pkce.rs              S256 challenge verification
-│   ├── client.rs            OAuthClient, registration, client authentication
-│   ├── consent.rs           remembering approved scopes
-│   ├── authorization.rs     /oauth/authorize: validate → sign in? → consent? → code
-│   ├── token.rs             /oauth/token: authorization_code and refresh_token grants
-│   └── revocation.rs        /oauth/revoke
+│   ├── routes.rs            web: /oauth/authorize, /oauth/consent
+│   │                        api: /oauth/token, /oauth/revoke
+│   ├── controllers/
+│   │   ├── authorize.rs     authorize and consent handlers (browser)
+│   │   └── token.rs         token and revoke handlers (client apps)
+│   ├── services/
+│   │   ├── params.rs        query/form pairs with duplicate detection
+│   │   ├── scope.rs         ScopeSet: parse, subset, union
+│   │   ├── pkce.rs          S256 challenge verification
+│   │   ├── client.rs        OAuthClient, registration, client authentication
+│   │   ├── consent.rs       remembering approved scopes
+│   │   ├── authorization.rs /oauth/authorize: validate → sign in? → consent? → code
+│   │   ├── token.rs         /oauth/token: authorization_code and refresh_token grants
+│   │   └── revocation.rs    /oauth/revoke
+│   ├── repo/                clients.rs  scopes.rs  consents.rs  authorization_codes.rs
+│   └── models/              oauth_clients.rs  oauth_scopes.rs  oauth_consents.rs
+│                            oauth_authorization_codes.rs
 │
-├── token/                   what the token endpoint hands out
-│   ├── signing.rs           RSA keys from disk, sign/verify JWTs, JWKS, rotation
-│   ├── access.rs            JWT access tokens (RFC 9068)
-│   └── refresh.rs           opaque refresh tokens, rotation rules
+├── token/                   what the token endpoint hands out (no routes)
+│   ├── services/
+│   │   ├── access.rs        JWT access tokens (RFC 9068)
+│   │   └── refresh.rs       opaque refresh tokens, rotation rules
+│   ├── repo/                refresh_tokens.rs
+│   └── models/              oauth_refresh_tokens.rs
 │
-├── oidc/                    OpenID Connect on top of OAuth
-│   ├── id_token.rs          ID token claims
-│   ├── userinfo.rs          /oauth/userinfo claims per scope
-│   └── discovery.rs         /.well-known/openid-configuration
-│
-├── db/                      queries, one module per table
-│   ├── entities/            SeaORM entities: one Model per table
-│   ├── users.rs  sessions.rs  clients.rs  scopes.rs
-│   └── authorization_codes.rs  consents.rs  refresh_tokens.rs
-│
-└── http/
-    ├── routes.rs            URL → handler table
-    ├── middleware.rs        security headers, request logging
-    ├── extract.rs           CurrentSession extractor
-    ├── pages.rs             home, sign-in, sign-up, logout
-    ├── oauth.rs             authorize, consent, token, revoke handlers
-    ├── oidc.rs              discovery, jwks, userinfo handlers
-    ├── cookies.rs  csrf.rs  html.rs   (html.rs = the data each template needs)
+└── oidc/                    OpenID Connect on top of OAuth
+    ├── routes.rs            /oauth/userinfo, /.well-known/*
+    ├── controllers/
+    │   ├── userinfo.rs      userinfo handler
+    │   └── well_known.rs    discovery and JWKS handlers
+    └── services/
+        ├── id_token.rs      ID token claims
+        ├── userinfo.rs      /oauth/userinfo claims per scope
+        └── discovery.rs     /.well-known/openid-configuration
 
 templates/                   HTML, rendered with Askama
 ├── layout.html              shared shell: <head>, CSS, page frame
@@ -91,24 +126,36 @@ templates/                   HTML, rendered with Askama
 
 ### Where domain types live
 
-Each table is described once, as a SeaORM `Model` in `db/entities/`, and the
-domain modules re-export the one they own:
+Each table is described once, as a SeaORM `Model` in its feature's
+`models/`, and the service that owns it re-exports it under a domain name:
 
 ```rust
-// src/identity/user.rs
-pub use crate::db::entities::users::Model as User;
+// src/authentication/services/user.rs
+pub use crate::authentication::models::users::Model as User;
 ```
 
 So `User`, `OAuthClient`, `Session`, `AuthorizationCode` and `RefreshToken`
 are entity models, and there is no separate row struct to keep in sync and no
-mapping layer. The *behaviour* still lives with the domain: `impl OAuthClient`
-(with `has_redirect_uri`) is in `oauth/client.rs`, and
-`RefreshToken::check_usable` in `token/refresh.rs`. Rust allows that because
-it is all one crate.
+mapping layer. The *behaviour* still lives in services: `impl OAuthClient`
+(with `has_redirect_uri`) is in `oauth/services/client.rs`, and
+`RefreshToken::check_usable` in `token/services/refresh.rs`. Rust allows that
+because it is all one crate.
 
 Columns holding a secret's hash use the `SecretHash` newtype
-(`db/entities/secret_hash.rs`), which prints `<redacted>`: SeaORM requires
-models to implement `Debug`, and a model has a field for every column.
+(`shared/database/secret_hash.rs`), which prints `<redacted>`: SeaORM
+requires models to implement `Debug`, and a model has a field for every
+column.
+
+### Rust modules for Go developers
+
+A folder is not a module until it is declared. Each folder has a `mod.rs`
+listing its files (`pub mod users;`), much like a Go package's file set, and
+`lib.rs` lists the top-level folders. When you add a file, add a
+`pub mod <name>;` line to the `mod.rs` next to it.
+
+Imports use paths from the crate root, for example
+`use crate::authentication::repo::users;`, and calls then read like Go
+package calls: `users::find_by_id(db, id)`.
 
 ## Shared state
 
@@ -164,7 +211,7 @@ SeaORM borrows that same pool, so there is one driver and one pool.
 
 ## Queries
 
-`db/` uses [SeaORM](https://www.sea-ql.org/SeaORM/). Queries are built from
+Each feature's `repo/` uses [SeaORM](https://www.sea-ql.org/SeaORM/). Queries are built from
 type-safe columns, so a renamed column is a compile error:
 
 ```rust
@@ -194,7 +241,7 @@ code + create refresh token" and "rotate refresh token" are atomic.
 
 Pages are server-rendered with [Askama](https://crates.io/crates/askama):
 markup lives in `templates/*.html`, and each struct in
-[src/http/html.rs](../src/http/html.rs) declares the data one template may
+[src/shared/views.rs](../src/shared/views.rs) declares the data one template may
 use. Templates are compiled during `cargo build`, so a field that does not
 exist is a build error, and `{{ value }}` is HTML-escaped automatically — an
 injection cannot come from a forgotten escape call.
@@ -215,10 +262,10 @@ audiences:
 
 | Where                          | Type                               | Response                                   |
 |--------------------------------|------------------------------------|--------------------------------------------|
-| `/oauth/token`, `/oauth/revoke` | `error::AppError`                 | JSON `{"error","error_description"}` (RFC 6749 §5.2) |
+| `/oauth/token`, `/oauth/revoke` | `shared::error::AppError`          | JSON `{"error","error_description"}` (RFC 6749 §5.2) |
 | `/oauth/authorize`             | `authorization::AuthorizationError` | `Unsafe` → HTML error page; `Redirect` → `redirect_uri?error=…` |
 | `/oauth/userinfo`              | `userinfo::UserInfoError`          | 401/403 with `WWW-Authenticate: Bearer error=…` (RFC 6750) |
-| HTML pages                     | `http::internal_error`             | Generic error page                          |
+| HTML pages                     | `shared::response::internal_error` | Generic error page                          |
 
 Two rules hold everywhere:
 
@@ -235,7 +282,7 @@ README). Signing keys are loaded from `SIGNING_KEYS_DIR` by
 
 ## Logging
 
-* `http::middleware::log_requests` logs method, **path without query
+* `middlewares::security_headers::log_requests` logs method, **path without query
   string**, status and latency.
 * Security-relevant events are logged with `target: "audit"`, for example
   `user_signed_in`, `authorization_code_issued`, `refresh_token_replayed`.
@@ -260,10 +307,14 @@ server.
 ## Adding things later
 
 * **A new scope**: add a migration inserting into `oauth_scopes`. If it
-  should expose claims, extend `oidc::userinfo::claims_for`.
-* **A new endpoint**: service function in the right domain module →
-  thin handler in `http/` → route in `http/routes.rs` → integration test.
-  If clients should discover it, add it to `oidc/discovery.rs`, and only
-  once it works.
-* **A new table**: new migration file, a `db/<table>.rs` module, and the
-  domain struct next to the logic that uses it.
+  should expose claims, extend `oidc::services::userinfo::claims_for`.
+* **A new endpoint**: service function in the feature's `services/` →
+  thin handler in its `controllers/` → route in its `routes.rs` →
+  integration test. If clients should discover it, add it to
+  `oidc/services/discovery.rs`, and only once it works.
+* **A new table**: new migration file, an entity in the owning feature's
+  `models/`, a query module in its `repo/`, and the domain alias in the
+  service that uses it.
+* **A new feature**: a folder with `routes.rs`, `controllers/`, `services/`,
+  `repo/` and `models/` (each with a `mod.rs`), a `pub mod` line in
+  `lib.rs`, and its routes merged in `api/router.rs`.

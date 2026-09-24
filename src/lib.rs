@@ -10,38 +10,43 @@
 //!
 //! ## Where things live
 //!
-//! | Module       | Responsibility                                                  |
-//! |--------------|-----------------------------------------------------------------|
-//! | [`config`]   | Reading settings from environment variables                     |
-//! | [`error`]    | [`error::AppError`] and its mapping to OAuth error responses    |
-//! | [`secret`]   | Random secrets, hashing them, constant-time comparison          |
-//! | [`db`]       | Connection pool, migrations, entities and all queries (SeaORM)  |
-//! | [`identity`] | Sharpnr users, passwords and browser sessions                   |
-//! | [`oauth`]    | OAuth 2.0: clients, scopes, PKCE, authorize, consent, token     |
-//! | [`token`]    | Access tokens (JWT), refresh tokens, signing keys               |
-//! | [`oidc`]     | OpenID Connect: ID tokens, UserInfo, discovery                  |
-//! | [`http`]     | Axum routes, handlers, cookies, CSRF and HTML pages             |
+//! The layout is feature-first: each feature folder owns its routes,
+//! controllers (HTTP handlers), services (business rules), repo (queries) and
+//! models (SeaORM entities). Cross-cutting code sits at the top level.
 //!
-//! The dependency direction is always `http` → services (`identity`, `oauth`,
-//! `token`, `oidc`) → `db`. Handlers stay thin; protocol rules live in the
-//! service modules where they can be unit tested without HTTP.
+//! | Module             | Responsibility                                               |
+//! |--------------------|--------------------------------------------------------------|
+//! | [`config`]         | Reading settings from environment variables                  |
+//! | [`api`]            | The router: mounts every feature's routes and middleware     |
+//! | [`middlewares`]    | Security headers, request logging, CSRF, current session     |
+//! | [`shared`]         | Errors, secrets, database connection, HTML views, responses  |
+//! | [`pkg`]            | Standalone helpers: cookies, JWT signing keys                |
+//! | [`authentication`] | Sharpnr users, passwords, sessions; sign-in/sign-up pages    |
+//! | [`oauth`]          | OAuth 2.0: clients, scopes, PKCE, authorize, consent, token  |
+//! | [`token`]          | Access tokens (JWT) and refresh tokens                       |
+//! | [`oidc`]           | OpenID Connect: ID tokens, UserInfo, discovery, JWKS         |
+//!
+//! Inside a feature, dependencies point one way:
+//! `routes` → `controllers` → `services` → `repo` → `models`. Controllers stay
+//! thin; protocol rules live in services, where they can be unit tested
+//! without HTTP.
 
 use std::sync::Arc;
 
 use sea_orm::DatabaseConnection;
 
+pub mod api;
+pub mod authentication;
 pub mod config;
-pub mod db;
-pub mod error;
-pub mod http;
-pub mod identity;
+pub mod middlewares;
 pub mod oauth;
 pub mod oidc;
-pub mod secret;
+pub mod pkg;
+pub mod shared;
 pub mod token;
 
 use config::Config;
-use token::signing::SigningKeys;
+use pkg::jwt_manager::SigningKeys;
 
 /// Shared, cheaply clonable application context.
 ///
@@ -67,5 +72,5 @@ impl AppState {
 
 /// Builds the complete Axum application (routes + middleware).
 pub fn app(state: AppState) -> axum::Router {
-    http::routes::router(state)
+    api::router::router(state)
 }

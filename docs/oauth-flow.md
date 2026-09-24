@@ -63,7 +63,7 @@ GET /oauth/authorize
     &code_challenge_method=S256
 ```
 
-**Code:** `http::oauth::authorize_get` → `oauth::authorization::decide` →
+**Code:** `oauth::controllers::authorize::authorize_get` → `oauth::services::authorization::decide` →
 `validate`.
 
 `validate` checks in two phases:
@@ -84,31 +84,31 @@ GET /oauth/authorize
 | `prompt`, `max_age`, `nonce` valid               | `invalid_request`            |
 | no `request` / `request_uri` objects             | `request_not_supported` / `request_uri_not_supported` |
 
-Parameters are read through `oauth::params::Params`, which rejects any
+Parameters are read through `oauth::services::params::Params`, which rejects any
 parameter that appears twice.
 
 ## 2. Sign in (if needed)
 
 `decide` looks at the `sharp_session` cookie (resolved by the
-`http::extract::CurrentSession` extractor).
+`middlewares::auth::CurrentSession` extractor).
 
 * No session, or `prompt=login`, or the session is older than `max_age` →
   `303 /signin?return_to=/oauth/authorize?...`
 * With `prompt=none`, instead of showing UI → error `login_required`.
 
-The sign-in page (`http::pages::sign_in`) checks the CSRF token, verifies the
-password with Argon2id (`identity::user::authenticate`), creates a session
-(`identity::session::create`), sets the cookie and redirects back to
+The sign-in page (`authentication::controllers::pages::sign_in`) checks the CSRF token, verifies the
+password with Argon2id (`authentication::services::user::authenticate`), creates a session
+(`authentication::services::session::create`), sets the cookie and redirects back to
 `return_to`, but only if it is a local path (`safe_return_to`).
 
 ## 3. Consent
 
 Back at `/oauth/authorize`, now signed in. `decide` loads the user's stored
-consent for this client (`oauth::consent::granted_scopes`):
+consent for this client (`oauth::services::consent::granted_scopes`):
 
 * Everything requested was approved before (and no `prompt=consent`) → skip
   straight to step 4.
-* Otherwise → render the consent page (`http::html::consent_page`) listing
+* Otherwise → render the consent page (`shared::views::consent_page`) listing
   each scope's description from `oauth_scopes`. With `prompt=none` →
   `consent_required` instead.
 
@@ -122,7 +122,7 @@ POST /oauth/consent
 csrf_token=…&client_id=…&redirect_uri=…&scope=…&state=…&code_challenge=…&…&decision=approve
 ```
 
-**Code:** `http::oauth::consent` → `authorization::complete_consent`.
+**Code:** `oauth::controllers::authorize::consent` → `authorization::complete_consent`.
 
 1. CSRF token must match the cookie, otherwise 403.
 2. The whole request is **validated again** (hidden fields came back from
@@ -163,10 +163,10 @@ grant_type=authorization_code
 
 A public client (no secret) omits the header and sends `client_id` in the body.
 
-**Code:** `http::oauth::token` → `oauth::token::handle` →
+**Code:** `oauth::controllers::token::token` → `oauth::services::token::handle` →
 `exchange_authorization_code`.
 
-1. **Authenticate the client** (`oauth::client::authenticate`): Basic header,
+1. **Authenticate the client** (`oauth::services::client::authenticate`): Basic header,
    form secret, or none for public clients. Any failure is `401 invalid_client`.
 2. **Consume the code** in a transaction:
    `UPDATE … SET used_at = now() WHERE code_hash = $1 AND used_at IS NULL RETURNING *`.
@@ -224,8 +224,8 @@ A client (normally its OIDC library) must:
 The integration test `complete_flow_sign_in_consent_code_tokens_userinfo`
 in `tests/oauth_flow.rs` does exactly this.
 
-**Code:** claims are built in `oidc::id_token::IdTokenClaims::new`; signing
-is `token::signing::SigningKeys::sign`.
+**Code:** claims are built in `oidc::services::id_token::IdTokenClaims::new`; signing
+is `pkg::jwt_manager::SigningKeys::sign`.
 
 ## 8. UserInfo
 
@@ -239,7 +239,7 @@ Authorization: Bearer eyJ0eXAiOiJhdCtqd3Qi…
   "email": "demo@example.com", "email_verified": false }
 ```
 
-**Code:** `oidc::userinfo::userinfo` verifies the access token
+**Code:** `oidc::services::userinfo::userinfo` verifies the access token
 (`token::access::verify`: signature, `typ`, `iss`, `aud`, `exp`), requires
 the `openid` scope, loads the user and returns only the claims its scopes
 allow (`claims_for`):
@@ -259,7 +259,7 @@ Authorization: Basic …
 grant_type=refresh_token&refresh_token=uwJSTXtT2lZP…
 ```
 
-**Code:** `oauth::token::exchange_refresh_token`.
+**Code:** `oauth::services::token::exchange_refresh_token`.
 
 1. Authenticate the client.
 2. `SELECT … FOR UPDATE` the token by hash (serialises concurrent use).
@@ -289,7 +289,7 @@ Authorization: Basic …
 token=<refresh token>
 ```
 
-Revokes the refresh token's whole family (`oauth::revocation::handle`).
+Revokes the refresh token's whole family (`oauth::services::revocation::handle`).
 Unknown tokens, including access tokens, still return `200 OK` (RFC 7009
 §2.2). Access tokens are JWTs and simply expire within 15 minutes.
 
@@ -301,6 +301,6 @@ Unknown tokens, including access tokens, still return `200 OK` (RFC 7009
 GET /.well-known/openid-configuration
 ```
 
-returns the endpoint URLs and capabilities (`oidc::discovery::document`).
+returns the endpoint URLs and capabilities (`oidc::services::discovery::document`).
 Most OIDC libraries need only the issuer URL (`http://localhost:3000`) plus
 `client_id`/`client_secret`, and configure everything else from this document.
