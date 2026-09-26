@@ -28,3 +28,6 @@ target
 # Local configuration and private key material. Never commit these.
 .env
 /keys/
+
+# Node dev tooling (Prettier)
+node_modules/
