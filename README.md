@@ -182,3 +182,7 @@ The sign-in pages use the mark inline and serve `assets/web/favicon.svg`,
 which adapts to dark mode. To set the GitHub link preview, upload
 `assets/brand/png/gh-social.png` under the repository's
 **Settings → Social preview**.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
