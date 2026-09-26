@@ -35,6 +35,8 @@ use sharp_oauth::{
 };
 use tracing_subscriber::EnvFilter;
 
+
+/// Entry point for the App it uses tokio. here application start first.
 #[tokio::main]
 async fn main() -> Result<()> {
     // A missing .env file is fine; real deployments set variables directly.

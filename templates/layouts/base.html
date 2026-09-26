@@ -1,0 +1,40 @@
+{#
+  Base layout for every Sharpnr page.
+
+  Child templates fill in the `title` and `content` blocks, and may add their
+  own stylesheet in the `styles` block. Values written with {{ ... }} are
+  HTML-escaped automatically, which is why no page needs a manual escape call.
+
+  The header and footer live in templates/partials/. Styles sit next to
+  their template (layouts/base.css, pages/*.css) and are served from /css/
+  (see src/api/stylesheets.rs). The CSP allows stylesheets from our own origin
+  only and no scripts at all. The mark is inline SVG; its ink shards use
+  `currentColor` so they follow light/dark mode.
+#}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      content="#f3f2f2"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#171514"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/base.css" />
+    {% block styles %}{% endblock %}
+    <title>{% block title %}Sharpnr{% endblock %} · Sharpnr</title>
+  </head>
+  <body>
+    {% include "partials/header.html" %}
+    <main>{% block content %}{% endblock %}</main>
+    {% include "partials/footer.html" %}
+  </body>
+</html>

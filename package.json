@@ -1,0 +1,13 @@
+{
+  "name": "sharp-oauth-tooling",
+  "private": true,
+  "description": "Dev tooling only (Prettier for Askama templates). Not part of the Rust build.",
+  "scripts": {
+    "fmt:templates": "prettier --write \"templates/**/*.html\"",
+    "fmt:templates:check": "prettier --check \"templates/**/*.html\""
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "prettier-plugin-jinja-template": "^2.2.0"
+  }
+}

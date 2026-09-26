@@ -1,0 +1,88 @@
+/* Consent screen (consent.html). */
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 1.35rem;
+  margin-bottom: 1rem;
+}
+
+h1 strong {
+  font-weight: 800;
+}
+
+/* Which account is granting access, shown as a chip. */
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0 0 1.5rem;
+  padding: 0.55rem 0.8rem;
+  background: var(--subtle);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.account-label {
+  color: var(--muted);
+}
+
+.account-email {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.scopes-intro {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* Each permission on its own row with a check mark. */
+ul.scopes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+ul.scopes li {
+  position: relative;
+  padding: 0.7rem 0.85rem 0.7rem 2.4rem;
+}
+
+ul.scopes li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* Check mark drawn with two borders: no icon file, no font. */
+ul.scopes li::before {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  top: 1.05rem;
+  width: 0.4rem;
+  height: 0.7rem;
+  border: solid var(--red);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Deny on the left, Allow on the right; both fill the row on phones. */
+.actions {
+  justify-content: flex-end;
+}
+
+.actions button {
+  flex: 1 1 0;
+  min-width: 8rem;
+}

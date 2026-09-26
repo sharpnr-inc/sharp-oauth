@@ -1,0 +1,32 @@
+{% extends "layouts/base.html" %}
+{% block title %}Account{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/css/home.css" />
+{% endblock %}
+
+{% block content %}
+  {% if let Some(user) = user %}
+    <h1>Your Sharpnr account</h1>
+    <div class="profile">
+      <div class="profile-details">
+        {% if let Some(name) = user.display_name %}
+          <p class="profile-name">{{ name }}</p>
+        {% endif %}
+        <p class="profile-email">
+          You are signed in as <strong>{{ user.email }}</strong>.
+        </p>
+      </div>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+      <button class="secondary block">Sign out</button>
+    </form>
+  {% else %}
+    <h1>Sharpnr account</h1>
+    <p class="lead">You are not signed in.</p>
+    <div class="home-actions">
+      <a class="button-link primary" href="/signin">Sign in</a>
+      <a class="button-link" href="/signup">Create an account</a>
+    </div>
+  {% endif %}
+{% endblock %}

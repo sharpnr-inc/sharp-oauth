@@ -1,0 +1,15 @@
+/* Sign-up page (signup.html). Shared form and button styles are in layouts/base.css. */
+
+.auth-form label:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.auth-form button {
+  margin-top: 1.75rem;
+}
+
+/* Browsers mark a too-short password as invalid once the user has typed;
+   `:user-invalid` waits for interaction so an empty form is not red. */
+.auth-form input:user-invalid {
+  border-color: var(--error-text);
+}

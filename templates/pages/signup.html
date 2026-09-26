@@ -1,0 +1,56 @@
+{% extends "layouts/base.html" %}
+{% block title %}Create account{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/css/signup.css" />
+{% endblock %}
+
+{% block content %}
+  <h1>Create your account</h1>
+  <p class="lead">One Sharpnr account for every app that supports it.</p>
+  {% if let Some(message) = error %}
+    <p class="error" role="alert">{{ message }}</p>
+  {% endif %}
+  <form method="post" action="/signup" class="auth-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+    {% if let Some(return_to) = return_to %}
+      <input type="hidden" name="return_to" value="{{ return_to }}" />
+    {% endif %}
+    <label for="email">Email</label>
+    <input
+      id="email"
+      type="email"
+      name="email"
+      value="{{ email }}"
+      autocomplete="username"
+      autofocus
+      required
+    />
+    <label for="display_name">
+      Display name <span class="optional">(optional)</span>
+    </label>
+    <input
+      id="display_name"
+      type="text"
+      name="display_name"
+      value="{{ display_name }}"
+      autocomplete="name"
+      maxlength="100"
+    />
+    <label for="password">Password</label>
+    <input
+      id="password"
+      type="password"
+      name="password"
+      autocomplete="new-password"
+      minlength="8"
+      aria-describedby="password-hint"
+      required
+    />
+    <p class="hint" id="password-hint">At least 8 characters.</p>
+    <button class="block">Create account</button>
+  </form>
+  <p class="card-footer">
+    Already have an account?
+    <a href="/signin{{ return_to_query }}">Sign in</a>
+  </p>
+{% endblock %}
