@@ -1,5 +1,5 @@
 /*
-  Shared styles for every Sharpnr page (linked from layout.html).
+  Shared styles for every Sharpnr page (linked from layouts/base.html).
 
   Branding follows assets/brand/README.md: ink #201e1d, red #ec3013,
   ground #f3f2f2. Red is reserved for the mark and for accents; it is never

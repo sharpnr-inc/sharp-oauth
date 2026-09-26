@@ -117,11 +117,16 @@ src/
         ├── userinfo.rs      /oauth/userinfo claims per scope
         └── discovery.rs     /.well-known/openid-configuration
 
-templates/                   HTML, rendered with Askama
-├── layout.html              shared shell: <head>, CSS, page frame
-├── home.html  signin.html  signup.html
-├── consent.html             the "App wants access" screen
-└── error.html
+templates/                   HTML, rendered with Askama; each .css sits next to its page
+├── layouts/
+│   └── base.html  base.css  shared shell: <head>, page frame
+├── partials/
+│   ├── header.html          Sharpnr mark and wordmark
+│   └── footer.html
+└── pages/
+    ├── home.html  signin.html  signup.html
+    ├── consent.html         the "App wants access" screen
+    └── error.html
 ```
 
 ### Where domain types live

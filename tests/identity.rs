@@ -28,7 +28,7 @@ async fn favicon_is_served_as_cacheable_svg(pool: PgPool) {
 #[sqlx::test]
 async fn stylesheets_are_served_as_cacheable_css(pool: PgPool) {
     let app = TestApp::new(pool);
-    let response = app.get("/css/layout.css").await;
+    let response = app.get("/css/base.css").await;
     assert_eq!(response.status, StatusCode::OK);
     assert_eq!(response.headers["content-type"], "text/css; charset=utf-8");
     assert_eq!(response.headers["cache-control"], "public, max-age=3600");
@@ -43,7 +43,7 @@ async fn stylesheets_are_served_as_cacheable_css(pool: PgPool) {
 async fn pages_link_stylesheets_without_allowing_inline_styles(pool: PgPool) {
     let app = TestApp::new(pool);
     let response = app.get("/signin").await;
-    assert!(response.body.contains(r#"href="/css/layout.css""#));
+    assert!(response.body.contains(r#"href="/css/base.css""#));
     assert!(response.body.contains(r#"href="/css/signin.css""#));
     assert!(!response.body.contains("<style"));
 

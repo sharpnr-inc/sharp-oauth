@@ -5,8 +5,9 @@
   own stylesheet in the `styles` block. Values written with {{ ... }} are
   HTML-escaped automatically, which is why no page needs a manual escape call.
 
-  Styles live in templates/*.css and are served from /css/ (see
-  src/api/stylesheets.rs). The CSP allows stylesheets from our own origin
+  The header and footer live in templates/partials/. Styles sit next to
+  their template (layouts/base.css, pages/*.css) and are served from /css/
+  (see src/api/stylesheets.rs). The CSP allows stylesheets from our own origin
   only and no scripts at all. The mark is inline SVG; its ink shards use
   `currentColor` so they follow light/dark mode.
 #}
@@ -27,20 +28,13 @@
       media="(prefers-color-scheme: dark)"
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/css/layout.css" />
+    <link rel="stylesheet" href="/css/base.css" />
     {% block styles %}{% endblock %}
     <title>{% block title %}Sharpnr{% endblock %} · Sharpnr</title>
   </head>
   <body>
-    <header class="brand">
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <polygon points="8,56 18,8 32,8" fill="currentColor" />
-        <polygon points="8,56 38,10 50,20" fill="currentColor" />
-        <polygon points="8,56 56,28 56,46" fill="#ec3013" />
-      </svg>
-      <span class="wordmark">Sharpnr</span>
-    </header>
+    {% include "partials/header.html" %}
     <main>{% block content %}{% endblock %}</main>
-    <footer>Secured by Sharp-OAuth</footer>
+    {% include "partials/footer.html" %}
   </body>
 </html>

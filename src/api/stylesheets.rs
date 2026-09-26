@@ -1,6 +1,7 @@
 //! `GET /css/{file}`: the stylesheets for our HTML pages.
 //!
-//! The CSS sits next to the templates in `templates/*.css` and is compiled
+//! The CSS sits next to its template (`templates/layouts/base.css`,
+//! `templates/pages/*.css`) and is compiled
 //! into the binary, like the favicon, so the server needs no static-file
 //! directory. Serving it from our own origin (instead of inline `<style>`)
 //! lets the CSP be `style-src 'self'` with no `'unsafe-inline'`.
@@ -15,12 +16,12 @@ use axum::{
 };
 
 const STYLESHEETS: &[(&str, &str)] = &[
-    ("layout.css", include_str!("../../templates/layout.css")),
-    ("signin.css", include_str!("../../templates/signin.css")),
-    ("signup.css", include_str!("../../templates/signup.css")),
-    ("consent.css", include_str!("../../templates/consent.css")),
-    ("home.css", include_str!("../../templates/home.css")),
-    ("error.css", include_str!("../../templates/error.css")),
+    ("base.css", include_str!("../../templates/layouts/base.css")),
+    ("signin.css", include_str!("../../templates/pages/signin.css")),
+    ("signup.css", include_str!("../../templates/pages/signup.css")),
+    ("consent.css", include_str!("../../templates/pages/consent.css")),
+    ("home.css", include_str!("../../templates/pages/home.css")),
+    ("error.css", include_str!("../../templates/pages/error.css")),
 ];
 
 pub async fn stylesheet(Path(file): Path<String>) -> Response {

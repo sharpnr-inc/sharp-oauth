@@ -2,7 +2,7 @@
 `request_fields` are the original authorization parameters, replayed as hidden
 fields so the consent POST can be validated from scratch. They are never trusted
 just because we rendered them. #}
-{% extends "layout.html" %}
+{% extends "layouts/base.html" %}
 {% block title %}Authorize application{% endblock %}
 {% block styles %}
   <link rel="stylesheet" href="/css/consent.css" />

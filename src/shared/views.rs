@@ -11,7 +11,7 @@
 //! forget one.
 //!
 //! These pages are deliberately plain: no JavaScript and nothing loaded from
-//! another origin. Styles are the `templates/*.css` files served by
+//! another origin. Styles are the `.css` files next to each template, served by
 //! [`crate::api::stylesheets`], which is what lets the Content-Security-Policy
 //! stay at `default-src 'none'; style-src 'self'` (see
 //! [`crate::middlewares::security_headers`]).
@@ -27,14 +27,14 @@ use axum::{
 use crate::{authentication::services::user::User, oauth::repo::scopes::ScopeDescription};
 
 #[derive(Template)]
-#[template(path = "home.html")]
+#[template(path = "pages/home.html")]
 struct HomeTemplate<'a> {
     user: Option<&'a User>,
     csrf: &'a str,
 }
 
 #[derive(Template)]
-#[template(path = "signin.html")]
+#[template(path = "pages/signin.html")]
 struct SignInTemplate<'a> {
     csrf: &'a str,
     return_to: Option<&'a str>,
@@ -45,7 +45,7 @@ struct SignInTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "signup.html")]
+#[template(path = "pages/signup.html")]
 struct SignUpTemplate<'a> {
     csrf: &'a str,
     return_to: Option<&'a str>,
@@ -56,7 +56,7 @@ struct SignUpTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "consent.html")]
+#[template(path = "pages/consent.html")]
 struct ConsentTemplate<'a> {
     csrf: &'a str,
     client_name: &'a str,
@@ -66,7 +66,7 @@ struct ConsentTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "error.html")]
+#[template(path = "pages/error.html")]
 struct ErrorTemplate<'a> {
     title: &'a str,
     message: &'a str,
