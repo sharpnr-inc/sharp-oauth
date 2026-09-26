@@ -421,6 +421,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             disabled_at: None,
+            owner_user_id: None,
         }
     }
 

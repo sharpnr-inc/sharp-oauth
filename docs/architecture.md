@@ -59,7 +59,7 @@ src/
 ├── middlewares/
 │   ├── security_headers.rs  security headers, request logging
 │   ├── csrf.rs              double-submit CSRF tokens for forms
-│   └── auth.rs              CurrentSession extractor (who is signed in?)
+│   └── auth.rs              CurrentSession / SignedInUser extractors
 ├── shared/
 │   ├── error.rs             AppError → OAuth JSON error responses
 │   ├── secret.rs            random tokens, SHA-256, constant-time compare
@@ -107,15 +107,22 @@ src/
 │   ├── repo/                refresh_tokens.rs
 │   └── models/              oauth_refresh_tokens.rs
 │
-└── oidc/                    OpenID Connect on top of OAuth
-    ├── routes.rs            /oauth/userinfo, /.well-known/*
-    ├── controllers/
-    │   ├── userinfo.rs      userinfo handler
-    │   └── well_known.rs    discovery and JWKS handlers
-    └── services/
-        ├── id_token.rs      ID token claims
-        ├── userinfo.rs      /oauth/userinfo claims per scope
-        └── discovery.rs     /.well-known/openid-configuration
+├── oidc/                    OpenID Connect on top of OAuth
+│   ├── routes.rs            /oauth/userinfo, /.well-known/*
+│   ├── controllers/
+│   │   ├── userinfo.rs      userinfo handler
+│   │   └── well_known.rs    discovery and JWKS handlers
+│   └── services/
+│       ├── id_token.rs      ID token claims
+│       ├── userinfo.rs      /oauth/userinfo claims per scope
+│       └── discovery.rs     /.well-known/openid-configuration
+│
+└── developer/               developer portal: users register their own apps
+    ├── routes.rs            /developer/apps[/new], /developer/apps/{client_id}[/secret|/delete]
+    ├── controllers/apps.rs  list, create, show, update, rotate secret, delete
+    ├── dtos.rs              the app form (repeated `scope` checkboxes)
+    └── services/apps.rs     ownership, per-user limit, user-facing messages
+                             (no tables of its own: apps are oauth_clients rows)
 
 templates/                   HTML, rendered with Askama; each .css sits next to its page
 ├── layouts/
@@ -126,7 +133,8 @@ templates/                   HTML, rendered with Askama; each .css sits next to 
 └── pages/
     ├── home.html  signin.html  signup.html
     ├── consent.html         the "App wants access" screen
-    └── error.html
+    ├── error.html
+    └── developer/           apps.html  new.html  app.html  developer.css
 ```
 
 ### Where domain types live
@@ -191,6 +199,7 @@ users ─────────────┬──────────�
                                    ▲              nonce, auth_time            revoked_at     │
                                    │              expires_at, used_at         authorization_code_id
 oauth_clients ─────────────────────┴──────────────────────┘                     ▲    └──────┘
+  owner_user_id → users (NULL for CLI-created clients)
   client_id, client_secret_hash                                                  │
   redirect_uris[], allowed_scopes[]  ────────────────────────────────────────────┘
 

@@ -24,7 +24,11 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 
-use crate::{authentication::services::user::User, oauth::repo::scopes::ScopeDescription};
+use crate::{
+    authentication::services::user::User,
+    developer::dtos::AppForm,
+    oauth::{repo::scopes::ScopeDescription, services::client::OAuthClient},
+};
 
 #[derive(Template)]
 #[template(path = "pages/home.html")]
@@ -70,6 +74,35 @@ struct ConsentTemplate<'a> {
 struct ErrorTemplate<'a> {
     title: &'a str,
     message: &'a str,
+}
+
+#[derive(Template)]
+#[template(path = "pages/developer/apps.html")]
+struct DeveloperAppsTemplate<'a> {
+    apps: &'a [OAuthClient],
+    notice: Option<&'a str>,
+}
+
+#[derive(Template)]
+#[template(path = "pages/developer/new.html")]
+struct DeveloperNewAppTemplate<'a> {
+    csrf: &'a str,
+    scopes: &'a [ScopeDescription],
+    form: &'a AppForm,
+    error: Option<&'a str>,
+}
+
+#[derive(Template)]
+#[template(path = "pages/developer/app.html")]
+struct DeveloperAppTemplate<'a> {
+    csrf: &'a str,
+    issuer: &'a str,
+    app: &'a OAuthClient,
+    scopes: &'a [ScopeDescription],
+    form: &'a AppForm,
+    new_secret: Option<&'a str>,
+    notice: Option<&'a str>,
+    error: Option<&'a str>,
 }
 
 pub fn home_page(user: Option<&User>, csrf: &str) -> Response {
@@ -135,6 +168,62 @@ pub fn consent_page(
             user,
             scopes,
             request_fields,
+        },
+    )
+}
+
+pub fn developer_apps_page(apps: &[OAuthClient], notice: Option<&str>) -> Response {
+    render(StatusCode::OK, DeveloperAppsTemplate { apps, notice })
+}
+
+pub fn developer_new_app_page(
+    status: StatusCode,
+    csrf: &str,
+    scopes: &[ScopeDescription],
+    form: &AppForm,
+    error: Option<&str>,
+) -> Response {
+    render(
+        status,
+        DeveloperNewAppTemplate {
+            csrf,
+            scopes,
+            form,
+            error,
+        },
+    )
+}
+
+/// What the application page shows besides the application itself.
+#[derive(Default)]
+pub struct DeveloperAppMessages<'a> {
+    /// A freshly created or rotated secret. This response is the only place
+    /// it ever appears.
+    pub new_secret: Option<&'a str>,
+    pub notice: Option<&'a str>,
+    pub error: Option<&'a str>,
+}
+
+pub fn developer_app_page(
+    status: StatusCode,
+    csrf: &str,
+    issuer: &str,
+    app: &OAuthClient,
+    scopes: &[ScopeDescription],
+    form: &AppForm,
+    messages: DeveloperAppMessages<'_>,
+) -> Response {
+    render(
+        status,
+        DeveloperAppTemplate {
+            csrf,
+            issuer,
+            app,
+            scopes,
+            form,
+            new_secret: messages.new_secret,
+            notice: messages.notice,
+            error: messages.error,
         },
     )
 }

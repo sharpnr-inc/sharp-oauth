@@ -68,12 +68,29 @@ impl OAuthClient {
 // Registration
 // ---------------------------------------------------------------------------
 
+/// Longest accepted client name. It is shown on the consent screen.
+pub const MAX_NAME_LEN: usize = 80;
+/// Most redirect URIs one client may register.
+pub const MAX_REDIRECT_URIS: usize = 10;
+
 /// Input for [`register`].
 pub struct NewClient {
     pub name: String,
     pub redirect_uris: Vec<String>,
     pub scopes: ScopeSet,
     pub confidential: bool,
+    /// The developer-portal user who owns it; `None` for CLI registrations.
+    pub owner_user_id: Option<Uuid>,
+}
+
+/// The fields a client's owner may change after registration.
+///
+/// The client type (public/confidential) is fixed at registration: switching
+/// it would change how every existing token was protected.
+pub struct ClientDetails {
+    pub name: String,
+    pub redirect_uris: Vec<String>,
+    pub scopes: ScopeSet,
 }
 
 /// Result of a successful registration.
@@ -88,8 +105,14 @@ pub struct RegisteredClient {
 pub enum RegistrationError {
     #[error("client name must not be empty")]
     EmptyName,
+    #[error("client name must be at most {MAX_NAME_LEN} characters")]
+    NameTooLong,
     #[error("at least one redirect URI is required")]
     NoRedirectUris,
+    #[error("at most {MAX_REDIRECT_URIS} redirect URIs are allowed")]
+    TooManyRedirectUris,
+    #[error("at least one scope is required")]
+    NoScopes,
     #[error("invalid redirect URI {uri:?}: {reason}")]
     InvalidRedirectUri { uri: String, reason: &'static str },
     #[error("unknown scopes: {0:?}")]
@@ -103,14 +126,131 @@ pub async fn register(
     db: &DatabaseConnection,
     new: NewClient,
 ) -> Result<RegisteredClient, RegistrationError> {
-    let name = new.name.trim().to_owned();
+    let details = validate_details(
+        db,
+        ClientDetails {
+            name: new.name,
+            redirect_uris: new.redirect_uris,
+            scopes: new.scopes,
+        },
+    )
+    .await?;
+
+    // Prefixes make leaked credentials easy to recognise (e.g. by secret
+    // scanners) and make it obvious which value is which.
+    let client_secret = new.confidential.then(new_client_secret);
+    let now = Utc::now();
+    let client = OAuthClient {
+        id: Uuid::now_v7(),
+        client_id: format!("sharp_client_{}", &generate_token()[..24]),
+        client_secret_hash: client_secret
+            .as_deref()
+            .map(|secret| SecretHash::from(hash_token(secret))),
+        name: details.name,
+        redirect_uris: details.redirect_uris,
+        allowed_scopes: details.scopes.to_vec(),
+        created_at: now,
+        updated_at: now,
+        disabled_at: None,
+        owner_user_id: new.owner_user_id,
+    };
+
+    clients::insert(db, &client).await?;
+    tracing::info!(target: "audit", event = "client_registered", client_id = %client.client_id);
+
+    Ok(RegisteredClient {
+        client,
+        client_secret,
+    })
+}
+
+/// Replaces a client's name, redirect URIs and allowed scopes.
+///
+/// Removing a redirect URI or scope only affects *new* authorization
+/// requests. Tokens that were already issued keep working until they expire
+/// or are revoked.
+pub async fn update_details(
+    db: &DatabaseConnection,
+    client: &OAuthClient,
+    details: ClientDetails,
+) -> Result<(), RegistrationError> {
+    let details = validate_details(db, details).await?;
+    clients::update_details(
+        db,
+        client.id,
+        &details.name,
+        &details.redirect_uris,
+        &details.scopes.to_vec(),
+        Utc::now(),
+    )
+    .await?;
+    tracing::info!(target: "audit", event = "client_updated", client_id = %client.client_id);
+    Ok(())
+}
+
+/// Replaces a confidential client's secret and returns the new one.
+///
+/// The old secret stops working immediately. Returns `None` for a public
+/// client, which has no secret to rotate.
+pub async fn rotate_secret(
+    db: &DatabaseConnection,
+    client: &OAuthClient,
+) -> Result<Option<String>, sea_orm::DbErr> {
+    if !client.is_confidential() {
+        return Ok(None);
+    }
+    let secret = new_client_secret();
+    clients::update_secret_hash(
+        db,
+        client.id,
+        SecretHash::from(hash_token(&secret)),
+        Utc::now(),
+    )
+    .await?;
+    tracing::info!(target: "audit", event = "client_secret_rotated", client_id = %client.client_id);
+    Ok(Some(secret))
+}
+
+/// Deletes a client. The database cascades the delete to its authorization
+/// codes, consents and refresh tokens, so every grant it held ends here.
+pub async fn delete(db: &DatabaseConnection, client: &OAuthClient) -> Result<(), sea_orm::DbErr> {
+    clients::delete(db, client.id).await?;
+    tracing::info!(target: "audit", event = "client_deleted", client_id = %client.client_id);
+    Ok(())
+}
+
+fn new_client_secret() -> String {
+    format!("sharp_secret_{}", generate_token())
+}
+
+/// Checks everything a developer chooses about a client, and normalises it:
+/// the name is trimmed and duplicate redirect URIs are dropped (keeping the
+/// first occurrence, so the order the developer typed is preserved).
+async fn validate_details(
+    db: &DatabaseConnection,
+    details: ClientDetails,
+) -> Result<ClientDetails, RegistrationError> {
+    let name = details.name.trim().to_owned();
     if name.is_empty() {
         return Err(RegistrationError::EmptyName);
     }
-    if new.redirect_uris.is_empty() {
+    if name.chars().count() > MAX_NAME_LEN {
+        return Err(RegistrationError::NameTooLong);
+    }
+
+    let mut redirect_uris: Vec<String> = Vec::new();
+    for uri in details.redirect_uris {
+        if !redirect_uris.contains(&uri) {
+            redirect_uris.push(uri);
+        }
+    }
+    if redirect_uris.is_empty() {
         return Err(RegistrationError::NoRedirectUris);
     }
-    for uri in &new.redirect_uris {
+    if redirect_uris.len() > MAX_REDIRECT_URIS {
+        return Err(RegistrationError::TooManyRedirectUris);
+    }
+    for uri in &redirect_uris {
         validate_redirect_uri_for_registration(uri).map_err(|reason| {
             RegistrationError::InvalidRedirectUri {
                 uri: uri.clone(),
@@ -120,7 +260,10 @@ pub async fn register(
     }
 
     // Every scope must exist in the oauth_scopes registry.
-    let requested = new.scopes.to_vec();
+    let requested = details.scopes.to_vec();
+    if requested.is_empty() {
+        return Err(RegistrationError::NoScopes);
+    }
     let known = scopes::find_by_names(db, &requested).await?;
     let unknown: Vec<String> = requested
         .iter()
@@ -131,32 +274,10 @@ pub async fn register(
         return Err(RegistrationError::UnknownScopes(unknown));
     }
 
-    // Prefixes make leaked credentials easy to recognise (e.g. by secret
-    // scanners) and make it obvious which value is which.
-    let client_secret = new
-        .confidential
-        .then(|| format!("sharp_secret_{}", generate_token()));
-    let now = Utc::now();
-    let client = OAuthClient {
-        id: Uuid::now_v7(),
-        client_id: format!("sharp_client_{}", &generate_token()[..24]),
-        client_secret_hash: client_secret
-            .as_deref()
-            .map(|secret| SecretHash::from(hash_token(secret))),
+    Ok(ClientDetails {
         name,
-        redirect_uris: new.redirect_uris,
-        allowed_scopes: requested,
-        created_at: now,
-        updated_at: now,
-        disabled_at: None,
-    };
-
-    clients::insert(db, &client).await?;
-    tracing::info!(target: "audit", event = "client_registered", client_id = %client.client_id);
-
-    Ok(RegisteredClient {
-        client,
-        client_secret,
+        redirect_uris,
+        scopes: details.scopes,
     })
 }
 
@@ -344,6 +465,7 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
             disabled_at: None,
+            owner_user_id: None,
         };
 
         assert!(client.has_redirect_uri("https://app.example.com/callback"));

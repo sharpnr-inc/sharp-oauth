@@ -6,6 +6,7 @@
 //! * [`crate::oauth::routes`]: `/oauth/authorize`, `/oauth/consent`,
 //!   `/oauth/token`, `/oauth/revoke`
 //! * [`crate::oidc::routes`]: `/oauth/userinfo`, `/.well-known/*`
+//! * [`crate::developer::routes`]: `/developer/apps` and its pages
 //!
 //! Routes come in two groups. **Web** routes are pages a person uses in a
 //! browser on Sharpnr's own origin. **API** routes are called by client
@@ -24,7 +25,7 @@ use tower_http::cors::{Any, CorsLayer};
 use crate::{
     AppState,
     api::{favicon, health, stylesheets},
-    authentication,
+    authentication, developer,
     middlewares::security_headers,
     oauth, oidc,
 };
@@ -35,7 +36,8 @@ pub fn router(state: AppState) -> Router {
         .route("/favicon.svg", get(favicon::favicon))
         .route("/css/{file}", get(stylesheets::stylesheet))
         .merge(authentication::routes::web_routes())
-        .merge(oauth::routes::web_routes());
+        .merge(oauth::routes::web_routes())
+        .merge(developer::routes::web_routes());
 
     // Browser-based apps (SPAs) call the API routes with `fetch` from their
     // own origin, so they need CORS. Allowing any origin is safe here

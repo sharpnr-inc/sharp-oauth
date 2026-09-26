@@ -30,6 +30,10 @@ pub struct Model {
     pub updated_at: DateTimeUtc,
     #[sea_orm(column_type = "TimestampWithTimeZone", nullable)]
     pub disabled_at: Option<DateTimeUtc>,
+    /// The user who registered it in the developer portal. `None` for
+    /// clients created with the `create-client` CLI.
+    #[sea_orm(nullable)]
+    pub owner_user_id: Option<Uuid>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

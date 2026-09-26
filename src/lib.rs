@@ -25,6 +25,7 @@
 //! | [`oauth`]          | OAuth 2.0: clients, scopes, PKCE, authorize, consent, token  |
 //! | [`token`]          | Access tokens (JWT) and refresh tokens                       |
 //! | [`oidc`]           | OpenID Connect: ID tokens, UserInfo, discovery, JWKS         |
+//! | [`developer`]      | Developer portal: users register and manage their own apps   |
 //!
 //! Inside a feature, dependencies point one way:
 //! `routes` → `controllers` → `services` → `repo` → `models`. Controllers stay
@@ -38,6 +39,7 @@ use sea_orm::DatabaseConnection;
 pub mod api;
 pub mod authentication;
 pub mod config;
+pub mod developer;
 pub mod middlewares;
 pub mod oauth;
 pub mod oidc;

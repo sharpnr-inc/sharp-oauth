@@ -81,6 +81,11 @@
   overflow-wrap: anywhere;
 }
 
+/* The developer apps link and the sign-out button sit close together. */
+.details + .button + form button {
+  margin-top: 0.75rem;
+}
+
 /* ---------- Signed out ---------- */
 
 .welcome {
