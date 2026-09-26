@@ -6,8 +6,11 @@
   used for small text (it fails WCAG contrast on white) or for the "Allow"
   button (red reads as danger on a consent screen).
 
-  The CSP only allows stylesheets from our own origin and loads no fonts, so
-  headings fall back to the system font when Archivo is not installed.
+  The CSP only allows stylesheets from our own origin, loads no fonts and
+  blocks `data:` images, so everything decorative here (the background glow,
+  the grid, the card's top edge) is drawn with CSS gradients, and icons are
+  inline SVG in the templates. Headings use Archivo when it is installed and
+  fall back to the system font.
 */
 
 /* ---------- Tokens ---------- */
@@ -17,44 +20,72 @@
   --red: #ec3013;
   --ground: #f3f2f2;
 
-  --bg: var(--ground);
+  --bg: #f6f5f4;
   --card: #ffffff;
   --text: var(--ink);
-  --muted: #5f5b59;
-  --line: #e2dfdd;
+  --muted: #676260;
+  --line: #e9e6e4;
   --field: #ffffff;
-  --field-line: #b9b5b2;
-  --field-hover: #8f8a87;
+  --field-line: #cfcac7;
+  --field-hover: #a19b98;
+  --icon: #8a8481;
   --primary: var(--ink);
-  --primary-hover: #3a3735;
+  --primary-hover: #37332f;
   --on-primary: #ffffff;
-  --subtle: #f7f6f6;
-  --error-bg: #fdecea;
+  --subtle: #f8f7f6;
+  --ring: rgb(236 48 19 / 0.22);
+  --glow: rgb(236 48 19 / 0.1);
+  --grid: rgb(32 30 29 / 0.05);
+  --error-bg: #fdefec;
+  --error-line: #f7c9bf;
   --error-text: #9e1f0b;
-  --shadow:
-    0 1px 2px rgb(32 30 29 / 0.06), 0 8px 24px -8px rgb(32 30 29 / 0.12);
+  --success: #1c7a45;
+  --success-bg: #e8f5ed;
 
-  --radius: 4px;
-  --space: 1rem;
+  --shadow:
+    0 0 0 1px rgb(32 30 29 / 0.04), 0 1px 2px rgb(32 30 29 / 0.04),
+    0 12px 32px -12px rgb(32 30 29 / 0.16),
+    0 32px 64px -32px rgb(32 30 29 / 0.12);
+  --shadow-button:
+    inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(32 30 29 / 0.2);
+
+  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-lg: 18px;
+  --card-pad: 40px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --heading: Archivo, ui-sans-serif, system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #171514;
-    --card: #232120;
-    --text: var(--ground);
-    --muted: #b3aeab;
-    --line: #363331;
-    --field: #1b1918;
-    --field-line: #57524f;
-    --field-hover: #7a7471;
+    --bg: #121110;
+    --card: #1c1a19;
+    --text: #f3f2f2;
+    --muted: #aba5a2;
+    --line: #2e2b29;
+    --field: #161413;
+    --field-line: #45413e;
+    --field-hover: #6b6562;
+    --icon: #8a8481;
     --primary: var(--ground);
     --primary-hover: #ffffff;
     --on-primary: var(--ink);
-    --subtle: #2b2928;
-    --error-bg: #3a1d17;
+    --subtle: #222020;
+    --ring: rgb(236 48 19 / 0.35);
+    --glow: rgb(236 48 19 / 0.14);
+    --grid: rgb(255 255 255 / 0.04);
+    --error-bg: #2d1612;
+    --error-line: #5c2419;
     --error-text: #ffb4a6;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+    --success: #7ad3a0;
+    --success-bg: #15291e;
+
+    --shadow:
+      0 0 0 1px rgb(255 255 255 / 0.02), 0 1px 2px rgb(0 0 0 / 0.4),
+      0 24px 48px -16px rgb(0 0 0 / 0.6);
+    --shadow-button:
+      inset 0 1px 0 rgb(255 255 255 / 0.5), 0 1px 2px rgb(0 0 0 / 0.4);
   }
 }
 
@@ -68,46 +99,99 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  background: var(--bg);
 }
 
 body {
+  position: relative;
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: clamp(24px, 8vh, 72px) 16px 32px;
-  background: var(--bg);
+  padding: clamp(28px, 9vh, 88px) 16px 32px;
+  /* No background here: <html> paints it, so the backdrop layers below
+     (z-index -1) are not covered by the body's own background. */
   color: var(--text);
   font:
-    16px/1.5 system-ui,
+    16px/1.55 ui-sans-serif,
+    system-ui,
     -apple-system,
     "Segoe UI",
     Roboto,
+    "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Backdrop: a red glow behind the card and a fine grid that fades out. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
+  background:
+    radial-gradient(
+      42rem 26rem at 50% -8rem,
+      var(--glow),
+      transparent 70%
+    ),
+    radial-gradient(30rem 20rem at 85% 110%, var(--glow), transparent 70%);
+}
+
+body::after {
+  background:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px) 0 0 / 40px
+      40px,
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px) 0 0 / 40px
+      40px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 60% 55% at 50% 30%,
+    #000 30%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 60% 55% at 50% 30%,
+    #000 30%,
+    transparent 100%
+  );
+}
+
+::selection {
+  background: rgb(236 48 19 / 0.2);
 }
 
 h1 {
-  font-family: Archivo, system-ui, sans-serif;
+  font-family: var(--heading);
   font-weight: 800;
-  font-size: 1.5rem;
+  font-size: 1.625rem;
   line-height: 1.2;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
   margin: 0 0 0.5rem;
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 p {
-  margin: 0 0 var(--space);
+  margin: 0 0 1rem;
 }
 
 a {
   color: inherit;
   font-weight: 600;
+  text-decoration-line: underline;
   text-decoration-color: var(--red);
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
+  transition: text-decoration-thickness 120ms ease;
 }
 
 a:hover {
@@ -119,58 +203,129 @@ strong {
   overflow-wrap: anywhere;
 }
 
+/* Inline SVG icons: stroke-only, sized by the surrounding text. */
+.icon {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ---------- Page frame ---------- */
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
   color: var(--text);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
 }
 
 .brand svg {
   display: block;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
+  transition: transform 300ms var(--ease);
+}
+
+.brand:hover svg {
+  transform: rotate(-6deg) scale(1.05);
 }
 
 .brand .wordmark {
-  font-family: Archivo, system-ui, sans-serif;
+  font-family: var(--heading);
   font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
 }
 
 main {
+  position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   background: var(--card);
-  padding: 32px;
-  border: 1px solid var(--line);
-  border-top: 3px solid var(--red);
-  border-radius: var(--radius);
+  padding: var(--card-pad);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+  animation: rise 500ms var(--ease) both;
+}
+
+/* A thin red edge across the top of the card, fading at both ends. */
+main::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--red), transparent);
 }
 
 @media (max-width: 480px) {
-  main {
-    padding: 24px 20px;
+  :root {
+    --card-pad: 26px;
+  }
+
+  body {
+    padding-top: 24px;
+  }
+
+  h1 {
+    font-size: 1.45rem;
   }
 }
 
 footer {
-  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 28px;
   color: var(--muted);
   font-size: 0.8rem;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  animation: fade 700ms 150ms ease both;
+}
+
+footer .icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
 }
 
 /* ---------- Text helpers ---------- */
 
 .lead {
   color: var(--muted);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .muted {
@@ -179,30 +334,31 @@ footer {
 }
 
 .card-footer {
-  margin: 1.5rem -32px -32px;
-  padding: 1rem 32px;
+  margin: 2rem calc(var(--card-pad) * -1) calc(var(--card-pad) * -1);
+  padding: 1.1rem var(--card-pad);
   border-top: 1px solid var(--line);
   background: var(--subtle);
   color: var(--muted);
   font-size: 0.9rem;
   text-align: center;
-  border-radius: 0 0 var(--radius) var(--radius);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
-@media (max-width: 480px) {
-  .card-footer {
-    margin: 1.5rem -20px -24px;
-    padding: 1rem 20px;
-  }
+.card-footer a {
+  color: var(--text);
 }
 
 /* ---------- Forms ---------- */
 
 label {
   display: block;
-  margin: 1.1rem 0 0.4rem;
+  margin: 1.25rem 0 0.45rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+}
+
+label:first-of-type {
+  margin-top: 0;
 }
 
 label .optional {
@@ -210,20 +366,50 @@ label .optional {
   font-weight: 400;
 }
 
+/* A field wraps an input and its leading icon. */
+.field {
+  position: relative;
+}
+
+.field > .icon {
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--icon);
+  pointer-events: none;
+  transition: color 150ms ease;
+}
+
+.field:focus-within > .icon {
+  color: var(--text);
+}
+
 input[type="email"],
 input[type="password"],
 input[type="text"] {
   display: block;
   width: 100%;
-  padding: 0.7rem 0.8rem;
+  min-height: 48px;
+  padding: 0.7rem 0.9rem;
   font: inherit;
   color: var(--text);
   background: var(--field);
   border: 1px solid var(--field-line);
   border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(32 30 29 / 0.04);
   transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease;
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.field > input {
+  padding-left: 2.7rem;
+}
+
+input::placeholder {
+  color: var(--icon);
+  opacity: 1;
 }
 
 input[type="email"]:hover,
@@ -237,11 +423,30 @@ input[type="password"]:focus,
 input[type="text"]:focus {
   outline: none;
   border-color: var(--text);
-  box-shadow: 0 0 0 3px rgb(236 48 19 / 0.25);
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+/* `:user-invalid` waits for interaction, so an untouched form is not red. */
+input:user-invalid {
+  border-color: var(--error-text);
+}
+
+input:user-invalid:focus {
+  box-shadow: 0 0 0 4px rgb(158 31 11 / 0.18);
+}
+
+/* Browser autofill paints its own yellow/blue; keep our field colours. */
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--field) inset;
+  caret-color: var(--text);
 }
 
 .hint {
-  margin: 0.4rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0;
   color: var(--muted);
   font-size: 0.8rem;
 }
@@ -249,50 +454,74 @@ input[type="text"]:focus {
 button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--red);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 /* ---------- Buttons ---------- */
 
-button {
+button,
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 1.5rem;
-  padding: 0.75rem 1.3rem;
+  gap: 0.5rem;
+  min-height: 48px;
+  margin-top: 1.75rem;
+  padding: 0.7rem 1.4rem;
   font: inherit;
-  font-weight: 700;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  text-decoration: none;
   border: 1px solid var(--primary);
   border-radius: var(--radius);
   background: var(--primary);
   color: var(--on-primary);
+  box-shadow: var(--shadow-button);
   cursor: pointer;
   transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    transform 60ms ease;
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 80ms ease;
 }
 
-button:hover {
+button:hover,
+.button:hover {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
 }
 
-button:active {
-  transform: translateY(1px);
+button:active,
+.button:active {
+  transform: translateY(1px) scale(0.99);
 }
 
-button.block {
+/* The trailing arrow nudges forward on hover. */
+button .icon,
+.button .icon {
+  transition: transform 200ms var(--ease);
+}
+
+button:hover .arrow,
+.button:hover .arrow {
+  transform: translateX(3px);
+}
+
+button.block,
+.button.block {
   width: 100%;
 }
 
-button.secondary {
-  background: transparent;
+button.secondary,
+.button.secondary {
+  background: var(--card);
   color: var(--text);
   border-color: var(--field-line);
+  box-shadow: 0 1px 2px rgb(32 30 29 / 0.05);
 }
 
-button.secondary:hover {
+button.secondary:hover,
+.button.secondary:hover {
   background: var(--subtle);
   border-color: var(--field-hover);
 }
@@ -305,36 +534,66 @@ button.secondary:hover {
 
 /* ---------- Alerts ---------- */
 
-.error {
+.alert {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.65rem;
   align-items: flex-start;
-  margin: 1rem 0 0.5rem;
-  padding: 0.7rem 0.85rem;
+  margin: -0.5rem 0 1.5rem;
+  padding: 0.8rem 0.95rem;
   background: var(--error-bg);
   color: var(--error-text);
-  border-left: 3px solid var(--red);
+  border: 1px solid var(--error-line);
   border-radius: var(--radius);
-  font-size: 0.925rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: shake 400ms var(--ease) both;
 }
 
-.error::before {
-  content: "!";
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 1.2rem;
-  height: 1.2rem;
+.alert .icon {
+  width: 1.15rem;
+  height: 1.15rem;
   margin-top: 0.1rem;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+/* ---------- Avatars ---------- */
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 50%;
-  background: var(--error-text);
-  color: var(--error-bg);
+  background: linear-gradient(135deg, #3a3634, var(--ink));
+  color: #ffffff;
+  font-family: var(--heading);
   font-weight: 800;
-  font-size: 0.8rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  box-shadow: 0 0 0 3px var(--card);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
     transition: none !important;
   }
 }

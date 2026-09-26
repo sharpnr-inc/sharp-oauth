@@ -6,27 +6,70 @@
 
 {% block content %}
   {% if let Some(user) = user %}
-    <h1>Your Sharpnr account</h1>
     <div class="profile">
-      <div class="profile-details">
+      <span class="avatar avatar-lg" aria-hidden="true">
         {% if let Some(name) = user.display_name %}
-          <p class="profile-name">{{ name }}</p>
+          {{ name.chars().next().unwrap_or('?').to_uppercase() }}
+        {% else %}
+          {{ user.email.chars().next().unwrap_or('?').to_uppercase() }}
         {% endif %}
-        <p class="profile-email">
-          You are signed in as <strong>{{ user.email }}</strong>.
-        </p>
-      </div>
+      </span>
+      <h1>
+        {% if let Some(name) = user.display_name %}
+          Hi, {{ name }}
+        {% else %}
+          Your Sharpnr account
+        {% endif %}
+      </h1>
+      <p class="profile-email">
+        You are signed in as <strong>{{ user.email }}</strong>
+      </p>
+      {% if user.email_verified %}
+        <span class="badge">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12.5 4.5 4.5L19 7.5" />
+          </svg>
+          Email verified
+        </span>
+      {% endif %}
     </div>
+    <ul class="details">
+      <li>
+        <span class="detail-label">Email</span>
+        <span class="detail-value">{{ user.email }}</span>
+      </li>
+      <li>
+        <span class="detail-label">Member since</span>
+        <span class="detail-value">
+          {{ user.created_at.format("%B %-d, %Y") }}
+        </span>
+      </li>
+    </ul>
     <form method="post" action="/logout">
       <input type="hidden" name="csrf_token" value="{{ csrf }}" />
-      <button class="secondary block">Sign out</button>
+      <button class="secondary block">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+          <path d="M10 17l-5-5 5-5M5 12h11" />
+        </svg>
+        Sign out
+      </button>
     </form>
   {% else %}
-    <h1>Sharpnr account</h1>
-    <p class="lead">You are not signed in.</p>
+    <div class="welcome">
+      <h1>One account for every Sharpnr app</h1>
+      <p class="lead">
+        You are not signed in. Sign in or create an account to get started.
+      </p>
+    </div>
     <div class="home-actions">
-      <a class="button-link primary" href="/signin">Sign in</a>
-      <a class="button-link" href="/signup">Create an account</a>
+      <a class="button block" href="/signin">
+        Sign in
+        <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </a>
+      <a class="button secondary block" href="/signup">Create an account</a>
     </div>
   {% endif %}
 {% endblock %}

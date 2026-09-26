@@ -5,10 +5,16 @@
 {% endblock %}
 
 {% block content %}
-  <h1>Sign in</h1>
+  <h1>Sign in to Sharpnr</h1>
   <p class="lead">Use your Sharpnr account to continue.</p>
   {% if let Some(message) = error %}
-    <p class="error" role="alert">{{ message }}</p>
+    <div class="alert" role="alert">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v4.5M12 16h.01" />
+      </svg>
+      <span>{{ message }}</span>
+    </div>
   {% endif %}
   <form method="post" action="/signin" class="auth-form">
     <input type="hidden" name="csrf_token" value="{{ csrf }}" />
@@ -16,24 +22,46 @@
       <input type="hidden" name="return_to" value="{{ return_to }}" />
     {% endif %}
     <label for="email">Email</label>
-    <input
-      id="email"
-      type="email"
-      name="email"
-      value="{{ email }}"
-      autocomplete="username"
-      autofocus
-      required
-    />
+    <div class="field">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="14" rx="2.5" />
+        <path d="m3.5 7 8.5 6 8.5-6" />
+      </svg>
+      <input
+        id="email"
+        type="email"
+        name="email"
+        value="{{ email }}"
+        placeholder="you@example.com"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        {% if email.is_empty() %}autofocus{% endif %}
+        required
+      />
+    </div>
     <label for="password">Password</label>
-    <input
-      id="password"
-      type="password"
-      name="password"
-      autocomplete="current-password"
-      required
-    />
-    <button class="block">Sign in</button>
+    <div class="field">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="10.5" width="16" height="10.5" rx="2.5" />
+        <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+      </svg>
+      <input
+        id="password"
+        type="password"
+        name="password"
+        placeholder="Your password"
+        autocomplete="current-password"
+        {% if !email.is_empty() %}autofocus{% endif %}
+        required
+      />
+    </div>
+    <button class="block">
+      Sign in
+      <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 12h14M13 6l6 6-6 6" />
+      </svg>
+    </button>
   </form>
   <p class="card-footer">
     New to Sharpnr? <a href="/signup{{ return_to_query }}">Create an account</a>

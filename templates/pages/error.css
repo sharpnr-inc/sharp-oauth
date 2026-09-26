@@ -6,28 +6,27 @@
 
 .error-page p {
   color: var(--muted);
+  text-wrap: pretty;
 }
 
-/* A red "!" badge drawn in CSS. */
+/* The warning icon on a soft red disc with a faint halo. */
 .error-mark {
   display: grid;
   place-items: center;
-  width: 3rem;
-  height: 3rem;
-  margin: 0 auto 1rem;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1.25rem;
   border-radius: 50%;
   background: var(--error-bg);
   color: var(--error-text);
-  font-weight: 800;
-  font-size: 1.4rem;
+  box-shadow: 0 0 0 8px rgb(236 48 19 / 0.06);
 }
 
-.error-mark::before {
-  content: "!";
+.error-mark .icon {
+  width: 1.9rem;
+  height: 1.9rem;
 }
 
-.back {
-  display: inline-block;
-  margin-top: 0.5rem;
-  font-size: 0.925rem;
+.error-page .button {
+  margin-top: 0.75rem;
 }

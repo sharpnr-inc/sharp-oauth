@@ -1,88 +1,211 @@
 /* Consent screen (consent.html). */
 
-.eyebrow {
-  margin: 0 0 0.4rem;
+main {
+  text-align: center;
+}
+
+/* ---------- App ↔ Sharpnr ---------- */
+
+.connection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0 1.5rem;
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  box-shadow:
+    0 1px 2px rgb(32 30 29 / 0.06),
+    0 8px 20px -10px rgb(32 30 29 / 0.25);
+}
+
+.app-tile {
+  background: linear-gradient(145deg, #3d3936, var(--ink));
+  border-color: transparent;
+  color: #ffffff;
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sharpnr-tile {
+  background: var(--card);
+  color: var(--text);
+}
+
+.sharpnr-tile svg {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+/* A dashed line between the tiles with an arrows icon in the middle. */
+.link {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
   color: var(--muted);
-  font-size: 0.75rem;
+}
+
+.link::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 2px dashed var(--field-line);
+}
+
+.link .icon {
+  position: relative;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0.35rem;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  stroke-width: 2.2;
+}
+
+/* ---------- Heading ---------- */
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 h1 {
-  font-size: 1.35rem;
-  margin-bottom: 1rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
 }
 
 h1 strong {
   font-weight: 800;
 }
 
-/* Which account is granting access, shown as a chip. */
+/* ---------- Account chip ---------- */
+
 .account {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem;
-  margin: 0 0 1.5rem;
-  padding: 0.55rem 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  max-width: 100%;
+  margin: 0 auto 1.75rem;
+  padding: 0.35rem 1rem 0.35rem 0.35rem;
   background: var(--subtle);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  font-size: 0.9rem;
+  border-radius: 999px;
+  text-align: left;
+}
+
+.account .avatar {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+
+.account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
 }
 
 .account-label {
   color: var(--muted);
+  font-size: 0.72rem;
 }
 
 .account-email {
   font-weight: 600;
+  font-size: 0.9rem;
   overflow-wrap: anywhere;
 }
 
+/* ---------- Permissions ---------- */
+
 .scopes-intro {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
   font-weight: 600;
+  font-size: 0.925rem;
+  text-align: left;
 }
 
-/* Each permission on its own row with a check mark. */
 ul.scopes {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0.35rem;
+  background: var(--subtle);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  text-align: left;
 }
 
 ul.scopes li {
-  position: relative;
-  padding: 0.7rem 0.85rem 0.7rem 2.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(32 30 29 / 0.04);
+  font-size: 0.95rem;
 }
 
 ul.scopes li + li {
-  border-top: 1px solid var(--line);
+  margin-top: 0.3rem;
 }
 
-/* Check mark drawn with two borders: no icon file, no font. */
-ul.scopes li::before {
-  content: "";
-  position: absolute;
-  left: 1rem;
-  top: 1.05rem;
-  width: 0.4rem;
-  height: 0.7rem;
-  border: solid var(--red);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+.check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
-/* Deny on the left, Allow on the right; both fill the row on phones. */
+.check .icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  stroke-width: 3;
+}
+
+/* ---------- Actions ---------- */
+
 .actions {
-  justify-content: flex-end;
+  margin-top: 1.75rem;
 }
 
 .actions button {
   flex: 1 1 0;
   min-width: 8rem;
+  margin-top: 0;
+}
+
+.card-footer {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.card-footer .icon {
+  margin-top: 0.15rem;
 }
