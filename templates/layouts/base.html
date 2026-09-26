@@ -8,7 +8,7 @@
   The header and footer live in templates/partials/. Styles sit next to
   their template (layouts/base.css, pages/*.css) and are served from /css/
   (see src/api/stylesheets.rs). The CSP allows stylesheets from our own origin
-  only and no scripts at all. The mark is inline SVG; its ink shards use
+  only and no scripts at all. The mark and icons are inline SVG; they use
   `currentColor` so they follow light/dark mode.
 #}
 <!doctype html>
@@ -19,12 +19,12 @@
     <meta name="color-scheme" content="light dark" />
     <meta
       name="theme-color"
-      content="#f3f2f2"
+      content="#f6f5f4"
       media="(prefers-color-scheme: light)"
     />
     <meta
       name="theme-color"
-      content="#171514"
+      content="#121110"
       media="(prefers-color-scheme: dark)"
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

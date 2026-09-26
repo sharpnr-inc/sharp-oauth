@@ -22,6 +22,10 @@ const STYLESHEETS: &[(&str, &str)] = &[
     ("consent.css", include_str!("../../templates/pages/consent.css")),
     ("home.css", include_str!("../../templates/pages/home.css")),
     ("error.css", include_str!("../../templates/pages/error.css")),
+    (
+        "developer.css",
+        include_str!("../../templates/pages/developer/developer.css"),
+    ),
 ];
 
 pub async fn stylesheet(Path(file): Path<String>) -> Response {

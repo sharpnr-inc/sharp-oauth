@@ -1,0 +1,131 @@
+{# Developer portal: register a new application. #}
+{% extends "layouts/base.html" %}
+{% block title %}New application{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/css/developer.css" />
+{% endblock %}
+
+{% block content %}
+  <a class="back" href="/developer/apps">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19 12H5M11 18l-6-6 6-6" />
+    </svg>
+    Your applications
+  </a>
+  <p class="eyebrow">Developer</p>
+  <h1>Register an application</h1>
+  <p class="lead">
+    You will get a client ID to start the sign-in flow from your app.
+  </p>
+
+  {% if let Some(message) = error %}
+    <div class="alert" role="alert">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v4.5M12 16h.01" />
+      </svg>
+      <span>{{ message }}</span>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/developer/apps" class="app-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+
+    <label for="name">Application name</label>
+    <input
+      id="name"
+      type="text"
+      name="name"
+      value="{{ form.name }}"
+      placeholder="My App"
+      maxlength="80"
+      autocomplete="off"
+      {% if form.name.is_empty() %}autofocus{% endif %}
+      required
+    />
+    <p class="hint">Shown to people on the consent screen.</p>
+
+    <fieldset>
+      <legend>Application type</legend>
+      <div class="choices">
+        <label class="choice">
+          <input
+            type="radio"
+            name="client_type"
+            value="confidential"
+            {% if !form.is_public() %}checked{% endif %}
+          />
+          <span class="choice-text">
+            <span class="choice-title">Server-side app</span>
+            <span class="choice-desc">
+              Runs on your server and can keep a secret. Gets a client secret.
+            </span>
+          </span>
+        </label>
+        <label class="choice">
+          <input
+            type="radio"
+            name="client_type"
+            value="public"
+            {% if form.is_public() %}checked{% endif %}
+          />
+          <span class="choice-text">
+            <span class="choice-title">Browser, mobile or desktop app</span>
+            <span class="choice-desc">
+              Code runs on the user's device. No secret; protected by PKCE.
+            </span>
+          </span>
+        </label>
+      </div>
+      <p class="hint">This cannot be changed later.</p>
+    </fieldset>
+
+    <label for="redirect_uris">Redirect URLs</label>
+    <textarea
+      id="redirect_uris"
+      name="redirect_uris"
+      rows="3"
+      placeholder="https://myapp.com/callback"
+      spellcheck="false"
+      autocapitalize="none"
+      required
+    >
+{{ form.redirect_uris }}</textarea>
+    <p class="hint">
+      One per line, matched exactly. Must use https, except http://localhost for
+      development.
+    </p>
+
+    <fieldset>
+      <legend>Scopes</legend>
+      <ul class="scope-list">
+        {% for scope in scopes %}
+          <li>
+            <label class="check">
+              <input
+                type="checkbox"
+                name="scope"
+                value="{{ scope.name }}"
+                {% if form.has_scope(scope.name.as_str()) %}checked{% endif %}
+              />
+              <span>
+                <code>{{ scope.name }}</code>
+                <span class="scope-desc">{{ scope.description }}</span>
+              </span>
+            </label>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="hint">
+        The most your app can ask for. People approve each one.
+      </p>
+    </fieldset>
+
+    <button class="block">
+      Create application
+      <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 12h14M13 6l6 6-6 6" />
+      </svg>
+    </button>
+  </form>
+{% endblock %}

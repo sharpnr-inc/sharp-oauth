@@ -1,0 +1,209 @@
+{# Developer portal: one application. Shows its credentials and endpoints,
+and has three forms: settings, rotate secret and delete.
+
+`new_secret` is only set in the response that created or rotated the secret.
+It is never stored in plaintext, so after this page it cannot be shown again. #}
+{% extends "layouts/base.html" %}
+{% block title %}{{ app.name }}{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/css/developer.css" />
+{% endblock %}
+
+{% block content %}
+  <a class="back" href="/developer/apps">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19 12H5M11 18l-6-6 6-6" />
+    </svg>
+    Your applications
+  </a>
+  <div class="app-head">
+    <span class="app-tile app-tile-lg" aria-hidden="true">
+      {{ app.name.chars().next().unwrap_or('?').to_uppercase() }}
+    </span>
+    <div>
+      <h1>{{ app.name }}</h1>
+      <p class="muted">
+        {% if app.is_confidential() %}
+          Server-side app · confidential
+        {% else %}
+          Browser, mobile or desktop app · public, PKCE only
+        {% endif %}
+        · created {{ app.created_at.format("%b %-d, %Y") }}
+      </p>
+    </div>
+  </div>
+
+  {% if let Some(message) = notice %}
+    <div class="notice" role="status">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m5 12.5 4.5 4.5L19 7.5" />
+      </svg>
+      <span>{{ message }}</span>
+    </div>
+  {% endif %}
+  {% if let Some(message) = error %}
+    <div class="alert" role="alert">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v4.5M12 16h.01" />
+      </svg>
+      <span>{{ message }}</span>
+    </div>
+  {% endif %}
+
+  <section>
+    <h2>Credentials</h2>
+    <dl class="credentials">
+      <div>
+        <dt>Client ID</dt>
+        <dd>
+          <code id="client-id" class="copyable">{{ app.client_id }}</code>
+        </dd>
+      </div>
+      <div>
+        <dt>Client secret</dt>
+        <dd>
+          {% if let Some(secret) = new_secret %}
+            <code id="client-secret" class="copyable secret">{{ secret }}</code>
+            <p class="secret-warning">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+                />
+                <path d="M12 9.5v4M12 17h.01" />
+              </svg>
+              Copy it now and keep it on your server. It will not be shown
+              again.
+            </p>
+          {% else if app.is_confidential() %}
+            <span class="muted">Hidden. Rotate it below to get a new one.</span>
+          {% else %}
+            <span class="muted">None. Public apps use PKCE instead.</span>
+          {% endif %}
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Endpoints</h2>
+    <dl class="credentials">
+      <div>
+        <dt>Discovery</dt>
+        <dd>
+          <code class="copyable"
+            >{{ issuer }}/.well-known/openid-configuration</code
+          >
+        </dd>
+      </div>
+      <div>
+        <dt>Authorize</dt>
+        <dd><code class="copyable">{{ issuer }}/oauth/authorize</code></dd>
+      </div>
+      <div>
+        <dt>Token</dt>
+        <dd><code class="copyable">{{ issuer }}/oauth/token</code></dd>
+      </div>
+      <div>
+        <dt>UserInfo</dt>
+        <dd><code class="copyable">{{ issuer }}/oauth/userinfo</code></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Settings</h2>
+    <form
+      method="post"
+      action="/developer/apps/{{ app.client_id }}"
+      class="app-form"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+
+      <label for="name">Application name</label>
+      <input
+        id="name"
+        type="text"
+        name="name"
+        value="{{ form.name }}"
+        maxlength="80"
+        autocomplete="off"
+        required
+      />
+
+      <label for="redirect_uris">Redirect URLs</label>
+      <textarea
+        id="redirect_uris"
+        name="redirect_uris"
+        rows="3"
+        spellcheck="false"
+        autocapitalize="none"
+        required
+      >
+{{ form.redirect_uris }}</textarea>
+      <p class="hint">
+        One per line, matched exactly. Must use https, except http://localhost
+        for development.
+      </p>
+
+      <fieldset>
+        <legend>Scopes</legend>
+        <ul class="scope-list">
+          {% for scope in scopes %}
+            <li>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  name="scope"
+                  value="{{ scope.name }}"
+                  {% if form.has_scope(scope.name.as_str()) %}checked{% endif %}
+                />
+                <span>
+                  <code>{{ scope.name }}</code>
+                  <span class="scope-desc">{{ scope.description }}</span>
+                </span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+      </fieldset>
+
+      <button>Save changes</button>
+    </form>
+  </section>
+
+  {% if app.is_confidential() %}
+    <section>
+      <h2>Rotate client secret</h2>
+      <p class="muted">
+        Creates a new secret and stops the current one at once. Update your
+        server with the new secret right away.
+      </p>
+      <form method="post" action="/developer/apps/{{ app.client_id }}/secret">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+        <button class="secondary">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" />
+          </svg>
+          Rotate secret
+        </button>
+      </form>
+    </section>
+  {% endif %}
+
+  <section class="danger">
+    <h2>Delete application</h2>
+    <p class="muted">
+      Signs every user out of {{ app.name }} and deletes its tokens and
+      approvals. This cannot be undone.
+    </p>
+    <form method="post" action="/developer/apps/{{ app.client_id }}/delete">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}" />
+      <label class="check">
+        <input type="checkbox" name="confirm" value="yes" required />
+        <span>I understand, delete {{ app.name }}</span>
+      </label>
+      <button class="danger-button">Delete application</button>
+    </form>
+  </section>
+{% endblock %}

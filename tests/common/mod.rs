@@ -157,6 +157,7 @@ impl TestApp {
                 redirect_uris: vec![REDIRECT_URI.into()],
                 scopes: ScopeSet::parse(scopes).unwrap(),
                 confidential,
+                owner_user_id: None,
             },
         )
         .await

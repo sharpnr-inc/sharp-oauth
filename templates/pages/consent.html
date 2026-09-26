@@ -8,18 +8,49 @@ just because we rendered them. #}
   <link rel="stylesheet" href="/css/consent.css" />
 {% endblock %}
 {% block content %}
+  {# The application and Sharpnr, joined by a dotted line. The app has no
+  logo yet, so it is shown by its initial. #}
+  <div class="connection" aria-hidden="true">
+    <span class="tile app-tile">
+      {{ client_name.chars().next().unwrap_or('?').to_uppercase() }}
+    </span>
+    <span class="link">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M7 8 3 12l4 4M17 8l4 4-4 4M3 12h18" />
+      </svg>
+    </span>
+    <span class="tile sharpnr-tile">
+      <svg viewBox="0 0 64 64">
+        <polygon points="8,56 18,8 32,8" fill="currentColor" />
+        <polygon points="8,56 38,10 50,20" fill="currentColor" />
+        <polygon points="8,56 56,28 56,46" fill="#ec3013" />
+      </svg>
+    </span>
+  </div>
   <p class="eyebrow">Authorization request</p>
   <h1>
     <strong>{{ client_name }}</strong> wants to access your Sharpnr account
   </h1>
-  <p class="account">
-    <span class="account-label">Signed in as</span>
-    <span class="account-email">{{ user.email }}</span>
-  </p>
+  <div class="account">
+    <span class="avatar">
+      {{ user.email.chars().next().unwrap_or('?').to_uppercase() }}
+    </span>
+    <span class="account-text">
+      <span class="account-label">Signed in as</span>
+      <span class="account-email">{{ user.email }}</span>
+    </span>
+  </div>
   <p class="scopes-intro">This will allow {{ client_name }} to:</p>
   <ul class="scopes">
     {% for scope in scopes %}
-      <li>{{ scope.description }}</li>
+      <li>
+        <span class="check" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="m5 12.5 4.5 4.5L19 7.5" />
+          </svg>
+        </span>
+        <span>{{ scope.description }}</span>
+      </li>
     {% endfor %}
   </ul>
   <form method="post" action="/oauth/consent">
@@ -33,7 +64,13 @@ just because we rendered them. #}
     </div>
   </form>
   <p class="card-footer">
-    You will be sent back to {{ client_name }}. Only continue if you trust this
-    application.
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 8h.01" />
+    </svg>
+    <span>
+      You will be sent back to {{ client_name }}. Only continue if you trust
+      this application.
+    </span>
   </p>
 {% endblock %}

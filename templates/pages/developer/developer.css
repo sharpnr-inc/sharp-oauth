@@ -1,0 +1,491 @@
+/* Developer portal pages (developer/apps.html, new.html, app.html).
+   Tokens, form fields, buttons and alerts come from layouts/base.css. */
+
+/* The portal shows URLs and IDs, so its card is wider than the sign-in card. */
+main {
+  max-width: 680px;
+}
+
+h2 {
+  font-family: var(--heading);
+  font-weight: 750;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.75rem;
+}
+
+code {
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--text);
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------- Page heading ---------- */
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.page-head .lead {
+  margin-bottom: 1.5rem;
+}
+
+.page-head .button {
+  margin-top: 0.25rem;
+}
+
+.app-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.app-head h1 {
+  margin-bottom: 0.15rem;
+}
+
+.app-head .muted {
+  margin: 0;
+}
+
+.app-tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #3d3936, var(--ink));
+  color: #ffffff;
+  font-family: var(--heading);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.app-tile-lg {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 16px;
+  font-size: 1.5rem;
+}
+
+/* ---------- Messages ---------- */
+
+.notice {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin: 0 0 1.5rem;
+  padding: 0.8rem 0.95rem;
+  background: var(--success-bg);
+  color: var(--success);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.notice .icon {
+  margin-top: 0.15rem;
+  stroke-width: 2.5;
+}
+
+.alert {
+  margin-top: 0;
+}
+
+/* ---------- App list ---------- */
+
+.app-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.app-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.app-list a {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 400;
+  transition: background-color 120ms ease;
+}
+
+.app-list a:hover {
+  background: var(--subtle);
+}
+
+.app-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.app-name {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.app-id {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.app-meta .muted {
+  font-size: 0.8rem;
+}
+
+.chevron {
+  color: var(--icon);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .app-meta {
+    display: none;
+  }
+}
+
+.empty {
+  padding: 2.5rem 1rem;
+  border: 1px dashed var(--field-line);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.empty-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: var(--subtle);
+  color: var(--muted);
+}
+
+.empty-mark .icon {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.empty .muted {
+  max-width: 26rem;
+  margin: 0 auto;
+}
+
+.empty .button {
+  margin-top: 1.25rem;
+}
+
+/* ---------- Sections on the app page ---------- */
+
+section {
+  padding-top: 1.75rem;
+  margin-top: 1.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.credentials {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.credentials > div {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.credentials > div + div {
+  border-top: 1px solid var(--line);
+}
+
+.credentials dt {
+  color: var(--muted);
+}
+
+.credentials dd {
+  margin: 0;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .credentials > div {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+
+/* No script may run on these pages (CSP), so there is no copy button:
+   one click selects the whole value instead. */
+.copyable {
+  user-select: all;
+  -webkit-user-select: all;
+  overflow-wrap: anywhere;
+}
+
+.secret {
+  display: block;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius-sm);
+  background: var(--subtle);
+}
+
+.secret-warning {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  margin: 0.5rem 0 0;
+  color: var(--error-text);
+  font-size: 0.825rem;
+  font-weight: 500;
+}
+
+.secret-warning .icon {
+  margin-top: 0.1rem;
+}
+
+.danger h2 {
+  color: var(--error-text);
+}
+
+button.danger-button {
+  background: var(--card);
+  color: var(--error-text);
+  border-color: var(--error-line);
+  box-shadow: none;
+}
+
+button.danger-button:hover {
+  background: var(--error-bg);
+  border-color: var(--error-text);
+}
+
+/* ---------- Form ---------- */
+
+.app-form .hint {
+  margin-bottom: 0;
+}
+
+.app-form > label,
+fieldset {
+  margin-top: 1.5rem;
+}
+
+.app-form > label:first-of-type {
+  margin-top: 0;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 5.5rem;
+  padding: 0.7rem 0.9rem;
+  font:
+    0.9rem/1.6 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(32 30 29 / 0.04);
+  resize: vertical;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+textarea:hover {
+  border-color: var(--field-hover);
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--text);
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+fieldset {
+  margin-inline: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 0.45rem;
+  padding: 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0.2rem 0 0;
+  accent-color: var(--primary);
+}
+
+/* The two application types, as selectable cards. */
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .choices {
+    grid-template-columns: 1fr;
+  }
+}
+
+label.choice {
+  display: flex;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius);
+  font-weight: 400;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+label.choice:hover {
+  border-color: var(--field-hover);
+}
+
+label.choice:has(input:checked) {
+  border-color: var(--text);
+  background: var(--subtle);
+}
+
+label.choice:has(input:focus-visible) {
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+.choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.choice-title {
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+
+.choice-desc {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.scope-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.scope-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.scope-list label.check {
+  padding: 0.7rem 0.95rem;
+}
+
+label.check {
+  display: flex;
+  gap: 0.65rem;
+  margin: 0;
+  font-weight: 400;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.scope-desc {
+  display: block;
+  color: var(--muted);
+  font-size: 0.825rem;
+}
+
+.danger label.check {
+  margin-top: 0.5rem;
+}
+
+.danger button {
+  margin-top: 1rem;
+}

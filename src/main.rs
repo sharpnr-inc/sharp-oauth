@@ -235,6 +235,7 @@ async fn create_client(args: &[String]) -> Result<()> {
             redirect_uris,
             scopes,
             confidential: !public,
+            owner_user_id: None,
         },
     )
     .await?;

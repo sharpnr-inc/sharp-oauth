@@ -1,15 +1,23 @@
-/* Sign-up page (signup.html). Shared form and button styles are in layouts/base.css. */
-
-.auth-form label:first-of-type {
-  margin-top: 0.5rem;
-}
+/* Sign-up page (signup.html). Shared form, field and button styles are in
+   layouts/base.css. */
 
 .auth-form button {
   margin-top: 1.75rem;
 }
 
-/* Browsers mark a too-short password as invalid once the user has typed;
-   `:user-invalid` waits for interaction so an empty form is not red. */
-.auth-form input:user-invalid {
-  border-color: var(--error-text);
+/* The password rule turns green once the typed password satisfies it, and
+   red if the user leaves the field too short. Pure CSS: `:has()` looks at the
+   field's validity, so no script is needed. */
+.hint .icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  transition: color 150ms ease;
+}
+
+.auth-form:has(#password:valid) .hint {
+  color: var(--success);
+}
+
+.auth-form:has(#password:user-invalid) .hint {
+  color: var(--error-text);
 }

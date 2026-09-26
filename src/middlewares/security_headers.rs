@@ -22,6 +22,11 @@ use axum::{
 /// CSP deliberately has no `form-action`: browsers apply it to the redirect
 /// *after* a form submit, which would block the final redirect to the
 /// client's callback URL.
+///
+/// There is deliberately no `Cross-Origin-Opener-Policy` either. Apps that
+/// sign in with a popup (`window.open` → our pages → their `/callback`) need
+/// the popup to keep its link to the window that opened it; `same-origin`
+/// here would cut that link and break popup sign-in.
 pub async fn security_headers(request: Request, next: Next) -> Response {
     let mut response = next.run(request).await;
     let headers = response.headers_mut();

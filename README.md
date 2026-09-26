@@ -18,17 +18,18 @@ Third-party app ──▶ /oauth/authorize ──▶ sign in ──▶ consent �
 
 ## Documentation
 
-| Read this                                    | To learn                                                         |
-| -------------------------------------------- | ---------------------------------------------------------------- |
-| [docs/oauth-flow.md](docs/oauth-flow.md)     | The protocol step by step, with the code that handles each step  |
-| [docs/architecture.md](docs/architecture.md) | How the code is organised, the data model, errors, testing       |
-| [docs/security.md](docs/security.md)         | Every security decision, the attack it stops, and where it lives |
-| [docs/deployment.md](docs/deployment.md)     | Docker image, Docker Compose, and production checklist           |
-| [SHARP_OAUTH_PLAN.md](SHARP_OAUTH_PLAN.md)   | The original project plan                                        |
-| `cargo doc --open --document-private-items`  | API docs. Every module starts with an explanation of its job     |
+| Read this                                      | To learn                                                         |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
+| [docs/oauth-flow.md](docs/oauth-flow.md)       | The protocol step by step, with the code that handles each step  |
+| [docs/architecture.md](docs/architecture.md)   | How the code is organised, the data model, errors, testing       |
+| [docs/security.md](docs/security.md)           | Every security decision, the attack it stops, and where it lives |
+| [docs/deployment.md](docs/deployment.md)       | Docker image, Docker Compose, and production checklist           |
+| [examples/react-client](examples/react-client) | A React app to test "Sign in with Sharpnr" end to end            |
+| [SHARP_OAUTH_PLAN.md](SHARP_OAUTH_PLAN.md)     | The original project plan                                        |
+| `cargo doc --open --document-private-items`    | API docs. Every module starts with an explanation of its job     |
 
 The code is organised by feature (`authentication/`, `oauth/`, `token/`,
-`oidc/`), each with `routes.rs`, `controllers/`, `services/`, `repo/` and
+`oidc/`, `developer/`), each with `routes.rs`, `controllers/`, `services/`, `repo/` and
 `models/`; see [docs/architecture.md](docs/architecture.md). Suggested
 reading order: `src/lib.rs` → `src/api/router.rs` → `src/oauth/mod.rs` →
 `src/oauth/services/authorization.rs` → `src/oauth/services/token.rs` →
@@ -64,7 +65,7 @@ createdb sharp_oauth              # or: psql -c 'create database sharp_oauth'
 # 2. Create a signing key (written to keys/, which is git-ignored)
 cargo run -- generate-signing-key
 
-# 3. Register a client application
+# 3. Register a client application (or use the developer portal, below)
 cargo run -- create-client \
     --name "Demo App" \
     --redirect-uri http://localhost:4000/callback \
@@ -78,6 +79,15 @@ curl http://localhost:3000/health          # → sharp-oauth is alive
 # 5. Walk through the whole flow with curl
 CLIENT_ID=sharp_client_... CLIENT_SECRET=sharp_secret_... scripts/demo-flow.sh
 ```
+
+### Register apps in the developer portal
+
+Instead of the CLI, any signed-in user can register apps at
+`http://localhost:3000/developer/apps`: choose a name, server-side
+(confidential) or browser/mobile (public), redirect URLs and scopes. The page
+shows the `client_id`, and the `client_secret` once. Owners can edit an app,
+rotate its secret, or delete it later. To try the whole flow from a real
+browser app, run the [React test client](examples/react-client).
 
 You can also do the browser part by hand: open
 `http://localhost:3000/signup`, create an account, then visit an authorize URL
@@ -117,6 +127,7 @@ Environment variables (loaded from `.env` in development):
 | `GET,POST /signin`, `/signup`, `POST /logout` | Sharpnr account pages           |                               |
 | `GET,POST /oauth/authorize`                   | Start of the flow (browser)     | RFC 6749 §4.1, OIDC Core §3.1 |
 | `POST /oauth/consent`                         | Consent screen submit (browser) |                               |
+| `GET,POST /developer/apps[/...]`              | Developer portal (browser)      |                               |
 | `POST /oauth/token`                           | Code → tokens, refresh → tokens | RFC 6749 §4.1.3, §6           |
 | `POST /oauth/revoke`                          | Revoke a refresh token          | RFC 7009                      |
 | `GET,POST /oauth/userinfo`                    | User claims for an access token | OIDC Core §5.3                |
@@ -155,7 +166,7 @@ cargo test
 | 6     | Refresh tokens: rotation, replay detection, revocation | ✅                                                                                                                                  |
 | 7     | JWT signing, `kid`, JWKS, key rotation                 | ✅ file-based keys                                                                                                                  |
 | 8     | OIDC: ID token, nonce, UserInfo, discovery             | ✅                                                                                                                                  |
-| 9     | Developer portal                                       | ⏳ not started (CLI only)                                                                                                           |
+| 9     | Developer portal                                       | ✅ create, edit, rotate secret, delete; React test client in `examples/`                                                            |
 | 10    | Hardening                                              | 🟡 partial: CSRF, secure cookies, security headers, audit log lines. Missing: rate limiting, login throttling, `audit_events` table |
 
 Known gaps, deliberately left for later: email verification (so

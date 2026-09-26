@@ -8,7 +8,13 @@
   <h1>Create your account</h1>
   <p class="lead">One Sharpnr account for every app that supports it.</p>
   {% if let Some(message) = error %}
-    <p class="error" role="alert">{{ message }}</p>
+    <div class="alert" role="alert">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v4.5M12 16h.01" />
+      </svg>
+      <span>{{ message }}</span>
+    </div>
   {% endif %}
   <form method="post" action="/signup" class="auth-form">
     <input type="hidden" name="csrf_token" value="{{ csrf }}" />
@@ -16,38 +22,71 @@
       <input type="hidden" name="return_to" value="{{ return_to }}" />
     {% endif %}
     <label for="email">Email</label>
-    <input
-      id="email"
-      type="email"
-      name="email"
-      value="{{ email }}"
-      autocomplete="username"
-      autofocus
-      required
-    />
+    <div class="field">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="14" rx="2.5" />
+        <path d="m3.5 7 8.5 6 8.5-6" />
+      </svg>
+      <input
+        id="email"
+        type="email"
+        name="email"
+        value="{{ email }}"
+        placeholder="you@example.com"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        autofocus
+        required
+      />
+    </div>
     <label for="display_name">
       Display name <span class="optional">(optional)</span>
     </label>
-    <input
-      id="display_name"
-      type="text"
-      name="display_name"
-      value="{{ display_name }}"
-      autocomplete="name"
-      maxlength="100"
-    />
+    <div class="field">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+      </svg>
+      <input
+        id="display_name"
+        type="text"
+        name="display_name"
+        value="{{ display_name }}"
+        placeholder="How apps should greet you"
+        autocomplete="name"
+        maxlength="100"
+      />
+    </div>
     <label for="password">Password</label>
-    <input
-      id="password"
-      type="password"
-      name="password"
-      autocomplete="new-password"
-      minlength="8"
-      aria-describedby="password-hint"
-      required
-    />
-    <p class="hint" id="password-hint">At least 8 characters.</p>
-    <button class="block">Create account</button>
+    <div class="field">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="10.5" width="16" height="10.5" rx="2.5" />
+        <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+      </svg>
+      <input
+        id="password"
+        type="password"
+        name="password"
+        placeholder="Choose a strong password"
+        autocomplete="new-password"
+        minlength="8"
+        aria-describedby="password-hint"
+        required
+      />
+    </div>
+    <p class="hint" id="password-hint">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m5 12.5 4.5 4.5L19 7.5" />
+      </svg>
+      <span>At least 8 characters.</span>
+    </p>
+    <button class="block">
+      Create account
+      <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 12h14M13 6l6 6-6 6" />
+      </svg>
+    </button>
   </form>
   <p class="card-footer">
     Already have an account?

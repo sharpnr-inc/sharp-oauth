@@ -63,6 +63,7 @@ pub async fn sign_in(
     if !csrf::verify(&headers, form.csrf_token.as_deref()) {
         return csrf_failure();
     }
+    
     let return_to = safe_return_to(form.return_to.as_deref().unwrap_or("/"));
 
     let user = match user::authenticate(&state.db, &form.email, form.password).await {
