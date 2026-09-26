@@ -4,10 +4,19 @@ fields so the consent POST can be validated from scratch. They are never trusted
 just because we rendered them. #}
 {% extends "layout.html" %}
 {% block title %}Authorize application{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/css/consent.css" />
+{% endblock %}
 {% block content %}
-  <h1>{{ client_name }} wants to access your Sharpnr account</h1>
-  <p class="muted">Signed in as {{ user.email }}</p>
-  <p>This will allow <strong>{{ client_name }}</strong> to:</p>
+  <p class="eyebrow">Authorization request</p>
+  <h1>
+    <strong>{{ client_name }}</strong> wants to access your Sharpnr account
+  </h1>
+  <p class="account">
+    <span class="account-label">Signed in as</span>
+    <span class="account-email">{{ user.email }}</span>
+  </p>
+  <p class="scopes-intro">This will allow {{ client_name }} to:</p>
   <ul class="scopes">
     {% for scope in scopes %}
       <li>{{ scope.description }}</li>
@@ -19,11 +28,11 @@ just because we rendered them. #}
       <input type="hidden" name="{{ field.0 }}" value="{{ field.1 }}" />
     {% endfor %}
     <div class="actions">
-      <button name="decision" value="approve">Allow</button>
       <button name="decision" value="deny" class="secondary">Deny</button>
+      <button name="decision" value="approve">Allow</button>
     </div>
   </form>
-  <p class="muted">
+  <p class="card-footer">
     You will be sent back to {{ client_name }}. Only continue if you trust this
     application.
   </p>

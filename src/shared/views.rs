@@ -10,9 +10,11 @@
 //! our sign-in pages. Nothing here needs a manual escape call, and nobody can
 //! forget one.
 //!
-//! These pages are deliberately plain: no JavaScript and no external
-//! resources, which is what lets the Content-Security-Policy stay at
-//! `default-src 'none'` (see [`crate::middlewares::security_headers`]).
+//! These pages are deliberately plain: no JavaScript and nothing loaded from
+//! another origin. Styles are the `templates/*.css` files served by
+//! [`crate::api::stylesheets`], which is what lets the Content-Security-Policy
+//! stay at `default-src 'none'; style-src 'self'` (see
+//! [`crate::middlewares::security_headers`]).
 //! They are the most security-sensitive screens in the product, so the less that runs on them,
 //! the better.
 
@@ -247,7 +249,7 @@ mod tests {
         });
 
         assert!(
-            body.contains(r#"<input type="hidden" name="csrf_token" value="csrf-value">"#),
+            body.contains(r#"<input type="hidden" name="csrf_token" value="csrf-value""#),
             "{body}"
         );
         assert!(

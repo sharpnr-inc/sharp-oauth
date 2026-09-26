@@ -14,7 +14,7 @@ use axum::{
 /// | Header                     | Why                                                          |
 /// |----------------------------|--------------------------------------------------------------|
 /// | `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` | Clickjacking: a hostile site must not be able to show our consent page in an invisible iframe and trick the user into clicking "Allow". |
-/// | CSP `default-src 'none'`   | Our pages load no scripts or external resources; `img-src 'self'` allows only our own favicon. |
+/// | CSP `default-src 'none'`   | Our pages load no scripts or external resources; `style-src 'self'` and `img-src 'self'` allow only our own stylesheets and favicon, and no inline styles. |
 /// | `X-Content-Type-Options`   | Stops browsers guessing a different content type.            |
 /// | `Referrer-Policy: no-referrer` | URLs may contain `state`/`code` values; never leak them via `Referer`. |
 /// | `Cache-Control: no-store`  | Tokens and personal pages must not be cached (RFC 6749 §5.1). Handlers that serve public, cacheable data (JWKS, discovery) set their own value. |
@@ -29,7 +29,7 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     headers.insert(
         header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static("default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'"),
+        HeaderValue::from_static("default-src 'none'; style-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'"),
     );
     headers.insert(
         header::X_CONTENT_TYPE_OPTIONS,

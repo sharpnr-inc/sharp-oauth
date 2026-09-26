@@ -1,0 +1,340 @@
+/*
+  Shared styles for every Sharpnr page (linked from layout.html).
+
+  Branding follows assets/brand/README.md: ink #201e1d, red #ec3013,
+  ground #f3f2f2. Red is reserved for the mark and for accents; it is never
+  used for small text (it fails WCAG contrast on white) or for the "Allow"
+  button (red reads as danger on a consent screen).
+
+  The CSP only allows stylesheets from our own origin and loads no fonts, so
+  headings fall back to the system font when Archivo is not installed.
+*/
+
+/* ---------- Tokens ---------- */
+
+:root {
+  --ink: #201e1d;
+  --red: #ec3013;
+  --ground: #f3f2f2;
+
+  --bg: var(--ground);
+  --card: #ffffff;
+  --text: var(--ink);
+  --muted: #5f5b59;
+  --line: #e2dfdd;
+  --field: #ffffff;
+  --field-line: #b9b5b2;
+  --field-hover: #8f8a87;
+  --primary: var(--ink);
+  --primary-hover: #3a3735;
+  --on-primary: #ffffff;
+  --subtle: #f7f6f6;
+  --error-bg: #fdecea;
+  --error-text: #9e1f0b;
+  --shadow:
+    0 1px 2px rgb(32 30 29 / 0.06), 0 8px 24px -8px rgb(32 30 29 / 0.12);
+
+  --radius: 4px;
+  --space: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171514;
+    --card: #232120;
+    --text: var(--ground);
+    --muted: #b3aeab;
+    --line: #363331;
+    --field: #1b1918;
+    --field-line: #57524f;
+    --field-hover: #7a7471;
+    --primary: var(--ground);
+    --primary-hover: #ffffff;
+    --on-primary: var(--ink);
+    --subtle: #2b2928;
+    --error-bg: #3a1d17;
+    --error-text: #ffb4a6;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* ---------- Base ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(24px, 8vh, 72px) 16px 32px;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.5 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+p {
+  margin: 0 0 var(--space);
+}
+
+a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration-color: var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  text-decoration-thickness: 3px;
+}
+
+strong {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Page frame ---------- */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  color: var(--text);
+}
+
+.brand svg {
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+
+.brand .wordmark {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+main {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--red);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 480px) {
+  main {
+    padding: 24px 20px;
+  }
+}
+
+footer {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Text helpers ---------- */
+
+.lead {
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card-footer {
+  margin: 1.5rem -32px -32px;
+  padding: 1rem 32px;
+  border-top: 1px solid var(--line);
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+@media (max-width: 480px) {
+  .card-footer {
+    margin: 1.5rem -20px -24px;
+    padding: 1rem 20px;
+  }
+}
+
+/* ---------- Forms ---------- */
+
+label {
+  display: block;
+  margin: 1.1rem 0 0.4rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+label .optional {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius);
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+input[type="email"]:hover,
+input[type="password"]:hover,
+input[type="text"]:hover {
+  border-color: var(--field-hover);
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px rgb(236 48 19 / 0.25);
+}
+
+.hint {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* ---------- Buttons ---------- */
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.3rem;
+  font: inherit;
+  font-weight: 700;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 60ms ease;
+}
+
+button:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button.block {
+  width: 100%;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--field-line);
+}
+
+button.secondary:hover {
+  background: var(--subtle);
+  border-color: var(--field-hover);
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ---------- Alerts ---------- */
+
+.error {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin: 1rem 0 0.5rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--error-bg);
+  color: var(--error-text);
+  border-left: 3px solid var(--red);
+  border-radius: var(--radius);
+  font-size: 0.925rem;
+}
+
+.error::before {
+  content: "!";
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.1rem;
+  border-radius: 50%;
+  background: var(--error-text);
+  color: var(--error-bg);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

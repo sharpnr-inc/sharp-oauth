@@ -23,7 +23,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     AppState,
-    api::{favicon, health},
+    api::{favicon, health, stylesheets},
     authentication,
     middlewares::security_headers,
     oauth, oidc,
@@ -33,6 +33,7 @@ pub fn router(state: AppState) -> Router {
     let web = Router::new()
         .route("/health", get(health::health))
         .route("/favicon.svg", get(favicon::favicon))
+        .route("/css/{file}", get(stylesheets::stylesheet))
         .merge(authentication::routes::web_routes())
         .merge(oauth::routes::web_routes());
 

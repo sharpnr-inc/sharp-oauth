@@ -1,0 +1,33 @@
+/* Error page (error.html). */
+
+.error-page {
+  text-align: center;
+}
+
+.error-page p {
+  color: var(--muted);
+}
+
+/* A red "!" badge drawn in CSS. */
+.error-mark {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: var(--error-bg);
+  color: var(--error-text);
+  font-weight: 800;
+  font-size: 1.4rem;
+}
+
+.error-mark::before {
+  content: "!";
+}
+
+.back {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.925rem;
+}

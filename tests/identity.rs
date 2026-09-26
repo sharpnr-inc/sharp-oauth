@@ -26,6 +26,33 @@ async fn favicon_is_served_as_cacheable_svg(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn stylesheets_are_served_as_cacheable_css(pool: PgPool) {
+    let app = TestApp::new(pool);
+    let response = app.get("/css/layout.css").await;
+    assert_eq!(response.status, StatusCode::OK);
+    assert_eq!(response.headers["content-type"], "text/css; charset=utf-8");
+    assert_eq!(response.headers["cache-control"], "public, max-age=3600");
+    assert!(response.body.contains("--red: #ec3013"));
+
+    // Only the listed files exist; nothing is read from disk by name.
+    assert_eq!(app.get("/css/missing.css").await.status, StatusCode::NOT_FOUND);
+    assert_eq!(app.get("/css/..%2FCargo.toml").await.status, StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test]
+async fn pages_link_stylesheets_without_allowing_inline_styles(pool: PgPool) {
+    let app = TestApp::new(pool);
+    let response = app.get("/signin").await;
+    assert!(response.body.contains(r#"href="/css/layout.css""#));
+    assert!(response.body.contains(r#"href="/css/signin.css""#));
+    assert!(!response.body.contains("<style"));
+
+    let csp = response.headers["content-security-policy"].to_str().unwrap();
+    assert!(csp.contains("style-src 'self'"), "{csp}");
+    assert!(!csp.contains("unsafe-inline"), "{csp}");
+}
+
+#[sqlx::test]
 async fn security_headers_are_present(pool: PgPool) {
     let app = TestApp::new(pool);
     let response = app.get("/signin").await;

@@ -1,7 +1,14 @@
 {% extends "layout.html" %}
 {% block title %}{{ title }}{% endblock %}
+{% block styles %}
+  <link rel="stylesheet" href="/css/error.css" />
+{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>{{ message }}</p>
+  <div class="error-page">
+    <span class="error-mark" aria-hidden="true"></span>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <a class="back" href="/">Go to your Sharpnr account</a>
+  </div>
 {% endblock %}
