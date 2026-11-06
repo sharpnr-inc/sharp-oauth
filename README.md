@@ -24,6 +24,7 @@ Third-party app ──▶ /oauth/authorize ──▶ sign in ──▶ consent �
 | [docs/architecture.md](docs/architecture.md)   | How the code is organised, the data model, errors, testing       |
 | [docs/security.md](docs/security.md)           | Every security decision, the attack it stops, and where it lives |
 | [docs/deployment.md](docs/deployment.md)       | Docker image, Docker Compose, and production checklist           |
+| [docs/saml.md](docs/saml.md)                   | SAML explained for beginners, with TypeScript (not built yet)    |
 | [examples/react-client](examples/react-client) | A React app to test "Sign in with Sharpnr" end to end            |
 | [SHARP_OAUTH_PLAN.md](SHARP_OAUTH_PLAN.md)     | The original project plan                                        |
 | `cargo doc --open --document-private-items`    | API docs. Every module starts with an explanation of its job     |
